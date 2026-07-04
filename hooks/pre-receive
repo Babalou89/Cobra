@@ -1,0 +1,3 @@
+#!/bin/sh
+# defense in depth — install with `cage gate install <bare-repo>`
+exec cage verify --gate

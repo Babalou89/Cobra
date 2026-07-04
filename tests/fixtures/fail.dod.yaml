@@ -1,0 +1,22 @@
+# Fixture: a DOD that can never hold. Used to prove verify blocks on a
+# failing criterion.
+task: "fixture — always fails"
+name: "fail-fixture"
+
+criteria:
+  - name: "file that cannot exist"
+    verify:
+      - type: exists
+        file: "this-file-does-not-exist-anywhere.txt"
+
+  - name: "command that always fails"
+    verify:
+      - type: command
+        run: "false"
+        expect_exit: 0
+
+  - name: "impossible grep"
+    verify:
+      - type: grep
+        file: "go.mod"
+        contains: "string-that-is-not-in-the-module-file"

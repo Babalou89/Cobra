@@ -1,0 +1,37 @@
+# Example DOD — replace with your project's real definition of done.
+# Every check is deterministic: file stats, greps, exit codes. The cage
+# refuses a DOD with zero criteria.
+
+task: "example — describe the task this DOD gates"
+name: "example"
+description: >
+  Template contract. Each criterion groups deterministic checks; all
+  checks must pass for verify to exit 0.
+
+criteria:
+  - name: "project documents itself"
+    verify:
+      - type: exists
+        file: "README.md"
+      - type: lines
+        file: "README.md"
+        min: 5
+
+  - name: "tests pass"
+    verify:
+      - type: command
+        run: "true # replace with your test command"
+        expect_exit: 0
+
+# Optional quality thresholds applied to every touched code file:
+# quality:
+#   min_code_lines: 5
+#   max_function_lines: 80
+#   max_nesting: 5
+#   no_empty_bodies: true
+#   no_todos: true
+
+# Optional external tools (exit 0 = pass):
+# tools:
+#   - name: pytest
+#     run: "pytest -q"

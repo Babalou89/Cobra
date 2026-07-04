@@ -1,0 +1,27 @@
+# Fixture: a DOD that holds against this repository. Used by the
+# acceptance criterion "verify gates a failing DOD and passes a clean one".
+task: "fixture — always passes against the cobra repo"
+name: "pass-fixture"
+
+criteria:
+  - name: "go module present"
+    verify:
+      - type: exists
+        file: "go.mod"
+      - type: grep
+        file: "go.mod"
+        contains: "module cobra"
+
+  - name: "entrypoint present"
+    verify:
+      - type: exists
+        file: "main.go"
+      - type: lines
+        file: "main.go"
+        min: 3
+
+  - name: "commands succeed"
+    verify:
+      - type: command
+        run: "true"
+        expect_exit: 0

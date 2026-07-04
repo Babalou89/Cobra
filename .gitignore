@@ -1,0 +1,9 @@
+/cage
+.cage/jail/
+.cage/state.json
+.cage/cooldown
+.cage/session.json
+.cage/report.json
+.cage/audit.jsonl
+__pycache__/
+*.pyc

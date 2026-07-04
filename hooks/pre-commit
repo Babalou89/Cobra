@@ -1,0 +1,3 @@
+#!/bin/sh
+# convenience only — the pre-receive gate is the real defense
+exec cage verify

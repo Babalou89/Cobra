@@ -1,0 +1,34 @@
+# cage configuration — written by `cage init`
+# The model is external and swappable: llama_cpp | anthropic | openai.
+# API keys come from environment variables, never from this file.
+
+backend:
+  type: llama_cpp
+  params:
+    base_url: "http://127.0.0.1:8080"
+    model: "local"
+    max_context: "32768"
+
+# Active DOD — the contract verify enforces. Empty = core + quality only.
+dod: ".cage/dods/example.yaml"
+
+# The agent's entire world. Nothing it writes lands outside this directory.
+jail:
+  root: ".cage/jail"
+
+# Context diet — always on.
+budget:
+  max_tokens: 24000
+  prompt_ceiling: 8000
+
+# Local memory (jsonl + TF-IDF). Off by default for clean attribution.
+memory:
+  enabled: false
+  path: ".cage/memories.jsonl"
+
+# Quality checks to disable, by code: synt empt stub secr hold impo dupl stru
+quality:
+  disable: []
+
+# Minimum seconds between run attempts.
+cooldown_seconds: 10

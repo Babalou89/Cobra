@@ -1,0 +1,169 @@
+name: "build-cobra-cage"
+description: >
+  Build the single Go binary `cage`: deterministic enforcement cage with the
+  agent worker folded in, model external over HTTP, no LLM in verify, no mem9,
+  jailed workspace, binary owns commit. Full spec in COBRA-BUILD.md.
+
+# This DOD is the contract the build must satisfy. Every criterion is
+# deterministic — file checks, grep, exit codes. No judgment. Run on babalou.
+
+criteria:
+
+  - name: "module + binary build"
+    verify:
+      - type: exists
+        file: "go.mod"
+      - type: exists
+        file: "main.go"
+      - type: command
+        run: "go build -o cage ."
+        expect_exit: 0
+      - type: command
+        run: "test -x ./cage"
+        expect_exit: 0
+
+  - name: "no mem9 / no continual external memory"
+    verify:
+      - type: command
+        run: "! grep -riE 'mem9|c1a5fed9|:9090' internal cmd"
+        expect_exit: 0
+
+  - name: "no LLM reachable from the verifier"
+    # the cage package must not import backend or worker — enforced structurally
+    verify:
+      - type: command
+        run: "! grep -rE 'cobra/internal/(backend|worker)' internal/cage"
+        expect_exit: 0
+
+  - name: "backend layer present and model-agnostic"
+    verify:
+      - type: exists
+        file: "internal/backend/backend.go"
+      - type: grep
+        file: "internal/backend/backend.go"
+        contains: "type Backend interface"
+      - type: exists
+        file: "internal/backend/registry.go"
+      - type: exists
+        file: "internal/backend/llamacpp.go"
+      - type: exists
+        file: "internal/backend/anthropic.go"
+      - type: exists
+        file: "internal/backend/openai.go"
+      # no hardcoded API keys
+      - type: command
+        run: "! grep -rE '(api[_-]?key|x-api-key)\\s*[=:]\\s*[\"'\\''][A-Za-z0-9]{12,}' internal/backend"
+        expect_exit: 0
+
+  - name: "the enforcer present"
+    verify:
+      - type: exists
+        file: "internal/cage/verify.go"
+      - type: exists
+        file: "internal/cage/core.go"
+      - type: exists
+        file: "internal/cage/dod.go"
+      - type: exists
+        file: "internal/cage/quality.go"
+      - type: exists
+        file: "internal/cage/checkers.go"
+      - type: grep
+        file: "internal/cage/checkers.go"
+        contains: "FileFacts"
+      - type: grep
+        file: "internal/cage/checkers.go"
+        regex: "synt|empt|stub|secr|hold|impo|dupl|stru"
+
+  - name: "worker folded in, no commit power"
+    verify:
+      - type: exists
+        file: "internal/worker/agent.go"
+      - type: exists
+        file: "internal/worker/tools.go"
+      # the worker must not call git commit — only the binary commits
+      - type: command
+        run: "! grep -rE 'git.+commit' internal/worker"
+        expect_exit: 0
+
+  - name: "jail + state + context diet present"
+    verify:
+      - type: exists
+        file: "internal/jail/workspace.go"
+      - type: exists
+        file: "internal/state/strikes.go"
+      - type: grep
+        file: "internal/state/strikes.go"
+        regex: "fingerprint|progress"
+      - type: exists
+        file: "internal/ctxdiet/budget.go"
+
+  - name: "command surface wired"
+    verify:
+      - type: command
+        run: "./cage --help | grep -qE 'init'"
+        expect_exit: 0
+      - type: command
+        run: "./cage --help | grep -qE 'run'"
+        expect_exit: 0
+      - type: command
+        run: "./cage --help | grep -qE 'verify'"
+        expect_exit: 0
+      - type: command
+        run: "./cage --help | grep -qE 'peek'"
+        expect_exit: 0
+
+  - name: "init scaffolds a project"
+    verify:
+      - type: command
+        run: "rm -rf /tmp/cobra-acc && mkdir -p /tmp/cobra-acc && cd /tmp/cobra-acc && git init -q && $OLDPWD/cage init && test -d .cage && test -f .ai/brain.md && test -f .ai/VERSION"
+        expect_exit: 0
+
+  - name: "peek catches a TODO with a line number"
+    verify:
+      - type: command
+        run: "printf 'def f():\\n    pass  # TODO fix\\n' > /tmp/cobra-acc/probe.py && cd /tmp/cobra-acc && $OLDPWD/cage peek probe.py | grep -qiE 'hold.*[0-9]'"
+        expect_exit: 0
+
+  - name: "verify gates a failing DOD and passes a clean one"
+    # writer supplies a tiny pass-DOD and fail-DOD fixture under tests/fixtures
+    verify:
+      - type: exists
+        file: "tests/fixtures/pass.dod.yaml"
+      - type: exists
+        file: "tests/fixtures/fail.dod.yaml"
+      - type: command
+        run: "./cage verify --dod tests/fixtures/fail.dod.yaml; test $? -ne 0"
+        expect_exit: 0
+      - type: command
+        run: "./cage verify --dod tests/fixtures/pass.dod.yaml"
+        expect_exit: 0
+
+  - name: "no-progress strike logic"
+    # two identical-failure runs strike; a reduced-failure run does not
+    verify:
+      - type: exists
+        file: "internal/state/strikes_test.go"
+      - type: command
+        run: "go test ./internal/state/ -run Strike -count=1"
+        expect_exit: 0
+
+  - name: "run stays inside the jail (HOME untouched)"
+    verify:
+      - type: exists
+        file: "internal/jail/workspace_test.go"
+      - type: command
+        run: "go test ./internal/jail/ -count=1"
+        expect_exit: 0
+
+  - name: "documentation + version moved"
+    verify:
+      - type: exists
+        file: ".ai/brain.md"
+      - type: lines
+        file: ".ai/brain.md"
+        min: 10
+      - type: grep
+        file: ".ai/brain.md"
+        contains: "COBRA"
+      - type: exists
+        file: ".ai/VERSION"
