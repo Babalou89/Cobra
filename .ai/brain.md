@@ -18,7 +18,7 @@ tree, no venv, no folder sprawl.
 - No external services. State is flat files under `.cage/`. No mem9.
 
 ## Current State
-- Version: 1.0.0 — COBRA v1 BUILT: `cage` binary compiles, all tests pass,
+- Version: 1.0.1 — COBRA v1 BUILT: `cage` binary compiles, all tests pass,
   every cobra-build.yaml criterion verified locally on babalou
 - Spec of record: `COBRA-BUILD.md` (brief) + `cobra-build.yaml` (DOD)
 - Source lineage: clean kimiversonf Hermes Cage v1.0 + cage-monitor + verify.sh,
@@ -70,8 +70,9 @@ llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 - Version 0.0.1
 
 ## Known Issues
-- `cage run` not yet exercised against a live backend end-to-end (worker loop
-  is code-complete; verify/peek/init/strikes proven)
+- For real tasks set `jail.root: "."` in the target project's config — the
+  default `.cage/jail` separates the agent's world from the dir verify
+  checks; decide the v1.1 layout (verify-inside-jail vs jail=project)
 - web_search uses DuckDuckGo HTML scraping — brittle if their markup shifts
 - Two soft toggles defaulted, not chosen: retrieval TF-IDF vs local BGE-M3
   (memory is off in v1 regardless)
@@ -79,5 +80,6 @@ llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.0.1   | 2026-07-04 | live smoke test PASSED: cage run drove Qwen3.5-27B via llama_cpp, worker wrote+tested hello.py, verify passed, binary committed — 1 attempt, 13s | .ai/brain.md, .ai/VERSION |
 | 1.0.0   | 2026-07-04 | COBRA v1 built + verified   | full Go tree: main.go, cmd/, internal/, assets/, hooks/, tests/, README.md |
 | 0.0.1   | 2026-06-28 | Spec written, repo seeded   | COBRA-BUILD.md, cobra-build.yaml, .ai/brain.md, .ai/VERSION |
