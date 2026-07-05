@@ -4,39 +4,36 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	"cobra/internal/jail"
 )
 
-// blockedCommands are substrings the shell tool refuses outright. Version
-// control is on the list because repository writes belong to the cage,
-// not to the model.
-var blockedCommands = []string{
-	"git ",
-	"git\t",
-	"sudo",
-	"shutdown",
-	"reboot",
-	"mkfs",
-	"crontab",
-	"ssh ",
-	"scp ",
+// blockedBinaries are refused only in command position (start of the
+// command or after ; & | $( or backtick) — a path or argument merely
+// containing one of these words is fine. A directory named "sudo" must be
+// inspectable; running sudo must not be. Version control is on the list
+// because repository writes belong to the cage, not to the model.
+var blockedBinaryPat = regexp.MustCompile("(?i)(^|[;&|]|\\$\\(|`)\\s*(sudo|git|ssh|scp|shutdown|reboot|mkfs[.a-z]*|crontab|chown|dd)\\b")
+
+// blockedSubstrings are dangerous anywhere in a command.
+var blockedSubstrings = []string{
 	"rm -rf /",
 	"rm -rf ~",
 	"> /dev/sd",
-	"dd if=",
-	"chown ",
-	"chmod -R 777",
-	"curl | ",
+	"chmod -r 777",
 	"| sh",
 	"| bash",
 }
 
 func guard(command string) error {
+	if m := blockedBinaryPat.FindStringSubmatch(command); m != nil {
+		return fmt.Errorf("blocked command %q — not allowed inside the jail", m[2])
+	}
 	lowered := strings.ToLower(command)
-	for _, blocked := range blockedCommands {
+	for _, blocked := range blockedSubstrings {
 		if strings.Contains(lowered, blocked) {
 			return fmt.Errorf("blocked command (matched %q) — not allowed inside the jail", strings.TrimSpace(blocked))
 		}
