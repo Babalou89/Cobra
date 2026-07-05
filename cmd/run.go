@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -76,10 +77,16 @@ var runCmd = &cobra.Command{
 		if cfg.Budget.MaxTokens > budgetCap {
 			cfg.Budget.MaxTokens = budgetCap
 		}
+		currentAttempt := 1
 		agent := &worker.Agent{
-			Backend: be,
-			Tools:   worker.DefaultRegistry(jl, skills.Root(dir)),
-			Budget:  ctxdiet.Budget{MaxTokens: cfg.Budget.MaxTokens, PromptCeiling: cfg.Budget.PromptCeiling},
+			Backend:        be,
+			Tools:          worker.DefaultRegistry(jl, skills.Root(dir)),
+			Budget:         ctxdiet.Budget{MaxTokens: cfg.Budget.MaxTokens, PromptCeiling: cfg.Budget.PromptCeiling},
+			MaxTurns:       cfg.Worker.MaxTurns,
+			AttemptTimeout: time.Duration(cfg.Worker.AttemptSeconds) * time.Second,
+			MaxGenTokens:   cfg.Worker.MaxGenTokens,
+			Ralph:          cfg.Worker.Mode != "conversational",
+			NotesPath:      filepath.Join(jl.Root, "NOTES.md"),
 			Log: func(format string, a ...any) {
 				fmt.Printf("  "+format+"\n", a...)
 			},
@@ -88,6 +95,28 @@ var runCmd = &cobra.Command{
 					Task: firstLineOf(task), Turn: turn, Tool: tool, OK: ok, Summary: summary,
 				})
 			},
+			Observe: func(kind string, fields map[string]any) {
+				e := state.Event{Attempt: currentAttempt, Kind: kind}
+				if v, ok := fields["turn"].(int); ok {
+					e.Turn = v
+				}
+				if v, ok := fields["tool"].(string); ok {
+					e.Tool = v
+				}
+				if v, ok := fields["text"].(string); ok {
+					e.Text = v
+				}
+				if v, ok := fields["ok"].(bool); ok {
+					e.OK = &v
+				}
+				if v, ok := fields["ctx_tokens"].(int); ok {
+					e.CtxTokens = v
+				}
+				if v, ok := fields["ctx_budget"].(int); ok {
+					e.CtxBudget = v
+				}
+				_ = state.AppendEvent(state.EventsPath(dir), e)
+			},
 		}
 
 		fmt.Printf("cage run — backend=%s dod=%s (%d criteria) jail=%s\n", be.Name(), dodPath, len(dod.Criteria), jl.Root)
@@ -95,10 +124,13 @@ var runCmd = &cobra.Command{
 
 		report := ""
 		for attempt := 1; ; attempt++ {
+			currentAttempt = attempt
 			fmt.Printf("attempt %d\n", attempt)
+			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "attempt started: " + firstLineOf(task)})
 			_ = state.TouchCooldown(state.CooldownPath(dir))
 			if err := agent.Run(task, string(dodText), report); err != nil {
 				fmt.Fprintf(os.Stderr, "worker error: %v\n", err)
+				_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "worker error: " + err.Error()})
 			}
 
 			res, err := cage.Verify(cage.Options{Dir: dir, DODPath: dodPath, DODOnly: false})
@@ -106,6 +138,8 @@ var runCmd = &cobra.Command{
 				return err
 			}
 			fmt.Print(res.Report())
+			passed := res.Passed
+			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "verify", OK: &passed, Text: firstLineOf(res.Report()) + fmt.Sprintf(" (%d failures)", len(res.Failures))})
 			_ = state.WriteReport(dir, state.QualityReport{Time: time.Now(), Passed: res.Passed, Failures: res.Failures})
 
 			if res.Passed {

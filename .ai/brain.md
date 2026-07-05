@@ -18,7 +18,7 @@ tree, no venv, no folder sprawl.
 - No external services. State is flat files under `.cage/`. No mem9.
 
 ## Current State
-- Version: 1.1.0 — Continual Harness v1: cage evolve with gated skill adoption
+- Version: 1.2.0 — spine (dead-man, loop abort, ralph mode) + cage watch dashboard
   every cobra-build.yaml criterion verified locally on babalou
 - Spec of record: `COBRA-BUILD.md` (brief) + `cobra-build.yaml` (DOD)
 - Source lineage: clean kimiversonf Hermes Cage v1.0 + cage-monitor + verify.sh,
@@ -92,6 +92,8 @@ llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.2.0   | 2026-07-05 | THE SPINE: dead-man's switch, in-attempt loop abort (3 identical = abort), JSON control-char repair, file_write append, ralph mode default (context reconstructed per turn from task+DOD+NOTES.md), note tool, cage watch dashboard, worker config section; 8 new spine tests | internal/worker/, internal/config/, internal/state/events.go, cmd/watch.go, cmd/run.go, assets/dashboard.html, README.md |
+| 1.1.2   | 2026-07-05 | shell guard: block command position only — dir named sudo/ was uninspectable; guard tests | internal/worker/tools_shell.go, guard_test.go |
 | 1.1.1   | 2026-07-05 | context diet hardened after live overflow (32792>32768 on home-audit run): conservative estimator (len/3), tool-result ceiling (prompt_ceiling/4), shed-until-fits loop, backend overflow recovery, budget auto-capped at 55% of backend MaxContext | internal/ctxdiet/budget.go, internal/worker/agent.go, cmd/run.go |
 | 1.1.0   | 2026-07-05 | Continual Harness v1: cage evolve, gated skill adoption, trajectory log, skill_run tool, .cage write protection | internal/skills/, internal/evolve/, internal/state/trace.go, internal/worker/, cmd/evolve.go, cmd/skills.go, cmd/run.go, README.md |
 | 1.0.1   | 2026-07-04 | live smoke test PASSED: cage run drove Qwen3.5-27B via llama_cpp, worker wrote+tested hello.py, verify passed, binary committed — 1 attempt, 13s | .ai/brain.md, .ai/VERSION |

@@ -1,0 +1,105 @@
+# DOD — the spine (v1.2.0): controls that replace the human guard.
+# Verify: ./cage verify --dod .cage/dods/dod-spine.yaml
+task: "spine: dead-man's switch, in-attempt loop abort, protocol repair, ralph-mode stateless turns, cage watch dashboard"
+name: "spine-v1"
+description: >
+  Four controls translating "human watching Claude Code" into "nobody
+  watching a local model": (1) per-attempt wall-clock + turn dead-man's
+  switch; (2) in-attempt loop detection — repeated identical actions or
+  protocol errors abort the attempt; (3) large-payload protocol: JSON
+  control-char repair, file_write append mode, configurable generation
+  tokens; (4) ralph mode — context reconstructed every turn from task +
+  DOD + NOTES.md + last report, never accumulated. Plus cage watch: a
+  zero-dependency web dashboard streaming model steps, cage actions, and
+  context metrics.
+
+criteria:
+  - name: "dead-man's switch present and configurable"
+    verify:
+      - type: grep
+        file: "internal/worker/agent.go"
+        regex: "deadline|Deadline"
+      - type: grep
+        file: "internal/config/config.go"
+        regex: "attempt_seconds"
+      - type: grep
+        file: "internal/config/config.go"
+        regex: "max_turns"
+
+  - name: "in-attempt loop detection"
+    verify:
+      - type: grep
+        file: "internal/worker/agent.go"
+        regex: "loop|repeat"
+      - type: command
+        run: "go test ./internal/worker/ -run Loop -count=1"
+        expect_exit: 0
+
+  - name: "protocol repair + append mode"
+    verify:
+      - type: grep
+        file: "internal/worker/agent.go"
+        contains: "repairJSON"
+      - type: command
+        run: "go test ./internal/worker/ -run Repair -count=1"
+        expect_exit: 0
+      - type: grep
+        file: "internal/worker/tools_fs.go"
+        contains: "append"
+
+  - name: "ralph mode: context reconstructed, not accumulated"
+    verify:
+      - type: grep
+        file: "internal/worker/agent.go"
+        regex: "(?i)ralph"
+      - type: grep
+        file: "internal/worker/agent.go"
+        contains: "NOTES.md"
+      - type: command
+        run: "go test ./internal/worker/ -run Ralph -count=1"
+        expect_exit: 0
+
+  - name: "cage watch dashboard"
+    verify:
+      - type: exists
+        file: "cmd/watch.go"
+      - type: exists
+        file: "internal/state/events.go"
+      - type: exists
+        file: "assets/dashboard.html"
+      - type: command
+        run: "go build -o cage . && ./cage --help | grep -q watch"
+        expect_exit: 0
+      # dashboard is self-contained: no external scripts/styles
+      - type: command
+        run: "! grep -E 'src=\"http|href=\"http' assets/dashboard.html"
+        expect_exit: 0
+
+  - name: "whole tree still healthy"
+    verify:
+      - type: command
+        run: "go vet ./..."
+        expect_exit: 0
+      - type: command
+        run: "go test ./... -count=1"
+        expect_exit: 0
+      # the enforcer still imports no model layer
+      - type: command
+        run: "! grep -rE 'cobra/internal/(backend|worker)' internal/cage"
+        expect_exit: 0
+      - type: command
+        run: "! grep -rE 'git.+commit' internal/worker"
+        expect_exit: 0
+
+  - name: "documentation + version moved"
+    verify:
+      - type: grep
+        file: "README.md"
+        contains: "cage watch"
+      - type: grep
+        file: "README.md"
+        regex: "(?i)ralph"
+      # proven at the 1.2.0 milestone; format check keeps this DOD evergreen
+      - type: command
+        run: "grep -qE '^[0-9]+\\.[0-9]+\\.[0-9]+' .ai/VERSION"
+        expect_exit: 0

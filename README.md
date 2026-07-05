@@ -45,6 +45,7 @@ cage run "implement the thing the DOD describes"
 | `cage strikes [reset]` | show strike count and lock state; `reset` is human-only. |
 | `cage evolve [--max N]` | continual harness pass: propose skills from trajectories; adopt only what passes the gate. |
 | `cage skills` | list the installed, gate-verified skill library. |
+| `cage watch [--port N]` | zero-dependency web dashboard: live model steps, cage actions, context metrics, strikes. |
 
 ## Backends
 
@@ -102,6 +103,33 @@ Structural guarantees, enforced by construction:
    agent is spinning = strike. Three consecutive = lock, human reset only.
 6. **Quality checks skip on unknown languages** — a language without
    rules passes; the scraper never fabricates a failure.
+
+## The Spine — running unattended
+
+Four controls substitute for a human watching the session:
+
+1. **Dead-man's switch** — every attempt has a wall-clock cap
+   (`worker.attempt_seconds`) and a turn cap (`worker.max_turns`). Breach
+   aborts the attempt; verify and the strike logic still run.
+2. **In-attempt loop detection** — three identical consecutive actions or
+   protocol errors abort the attempt immediately instead of burning the
+   turn budget. Strikes police *between* attempts; this polices *within*.
+3. **Large-payload protocol** — malformed JSON with raw newlines inside
+   strings is repaired deterministically; `file_write` supports
+   `append: true` so big files land in chunks; generation cap is
+   configurable (`worker.max_gen_tokens`).
+4. **Ralph mode** (default, `worker.mode: ralph`) — context is
+   *reconstructed* every turn, never accumulated: task + DOD + last verify
+   report + `NOTES.md` + the last action. The model records durable
+   findings with the `note` tool; `NOTES.md` is its only memory. Context
+   per turn is constant, so it cannot overflow, and nothing important can
+   scroll away. Set `worker.mode: conversational` for the windowed
+   history instead.
+
+Watch it live: `cage watch` serves a self-contained dashboard on
+`:8060` — the model's replies, every dispatched tool with its measured
+result, verify verdicts, context tokens against budget, and strike state,
+all read from the cage's own append-only records.
 
 ## Continual Harness — `cage evolve`
 

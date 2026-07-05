@@ -34,6 +34,12 @@ type Config struct {
 	Quality struct {
 		Disable []string `yaml:"disable"`
 	} `yaml:"quality"`
+	Worker struct {
+		Mode           string `yaml:"mode"`            // ralph (default) | conversational
+		MaxTurns       int    `yaml:"max_turns"`       // per attempt
+		AttemptSeconds int    `yaml:"attempt_seconds"` // dead-man's switch
+		MaxGenTokens   int    `yaml:"max_gen_tokens"`  // generation cap per reply
+	} `yaml:"worker"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
 }
 
@@ -52,6 +58,10 @@ func Defaults() *Config {
 	c.Budget.PromptCeiling = 8000
 	c.Memory.Enabled = false
 	c.Memory.Path = filepath.Join(".cage", "memories.jsonl")
+	c.Worker.Mode = "ralph"
+	c.Worker.MaxTurns = 60
+	c.Worker.AttemptSeconds = 900
+	c.Worker.MaxGenTokens = 4096
 	c.CooldownSeconds = 10
 	return c
 }
@@ -82,6 +92,18 @@ func Load(dir string) (*Config, error) {
 	}
 	if cfg.Budget.PromptCeiling <= 0 {
 		cfg.Budget.PromptCeiling = 8000
+	}
+	if cfg.Worker.Mode == "" {
+		cfg.Worker.Mode = "ralph"
+	}
+	if cfg.Worker.MaxTurns <= 0 {
+		cfg.Worker.MaxTurns = 60
+	}
+	if cfg.Worker.AttemptSeconds <= 0 {
+		cfg.Worker.AttemptSeconds = 900
+	}
+	if cfg.Worker.MaxGenTokens <= 0 {
+		cfg.Worker.MaxGenTokens = 4096
 	}
 	return cfg, nil
 }

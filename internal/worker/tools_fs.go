@@ -44,8 +44,8 @@ func registerFS(r *Registry, w *jail.Workspace) {
 	})
 	r.Register(&Tool{
 		Name:  "file_write",
-		Usage: `{"path": "relative/path", "content": "..."}`,
-		Desc:  "write a whole file inside the workspace",
+		Usage: `{"path": "relative/path", "content": "...", "append": false}`,
+		Desc:  "write a file inside the workspace; set append:true to add a chunk to an existing file (use for large files)",
 		Fn: func(args map[string]any) ToolResult {
 			path := argString(args, "path", "")
 			content := argString(args, "content", "")
@@ -58,6 +58,20 @@ func registerFS(r *Registry, w *jail.Workspace) {
 			}
 			if err := protectedWrite(abs); err != nil {
 				return ToolResult{OK: false, Output: err.Error()}
+			}
+			if argBool(args, "append", false) {
+				if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+					return ToolResult{OK: false, Output: err.Error()}
+				}
+				f, err := os.OpenFile(abs, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+				if err != nil {
+					return ToolResult{OK: false, Output: err.Error()}
+				}
+				defer f.Close()
+				if _, err := f.WriteString(content); err != nil {
+					return ToolResult{OK: false, Output: err.Error()}
+				}
+				return ToolResult{OK: true, Output: fmt.Sprintf("appended %d bytes to %s", len(content), abs)}
 			}
 			if abs, err = w.WriteFile(path, []byte(content)); err != nil {
 				return ToolResult{OK: false, Output: err.Error()}

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cage watch</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background:#0d1117; color:#c9d1d9; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; padding:16px; }
+  header { display:flex; flex-wrap:wrap; gap:24px; align-items:baseline; border-bottom:1px solid #21262d; padding-bottom:12px; margin-bottom:12px; }
+  h1 { font-size:16px; color:#e6edf3; }
+  .stat { white-space:nowrap; }
+  .stat b { color:#e6edf3; }
+  .ok    { color:#3fb950; }
+  .bad   { color:#f85149; }
+  .warn  { color:#d29922; }
+  .dim   { color:#8b949e; }
+  #feed { display:flex; flex-direction:column; gap:6px; }
+  .ev { padding:6px 10px; border-left:3px solid #21262d; background:#161b22; border-radius:0 6px 6px 0; overflow-wrap:anywhere; }
+  .ev.reply  { border-left-color:#58a6ff; }
+  .ev.action { border-left-color:#d29922; }
+  .ev.result.pass { border-left-color:#3fb950; }
+  .ev.result.fail { border-left-color:#f85149; }
+  .ev.verify.pass { border-left-color:#3fb950; background:#12261a; }
+  .ev.verify.fail { border-left-color:#f85149; background:#2b1416; }
+  .ev.status { border-left-color:#8b949e; color:#8b949e; }
+  .meta { color:#8b949e; margin-right:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>cage watch</h1>
+  <span class="stat">attempt <b id="attempt">–</b></span>
+  <span class="stat">turn <b id="turn">–</b></span>
+  <span class="stat">context <b id="ctx">–</b> <span class="dim">of</span> <b id="budget">–</b> <span class="dim">est. tokens</span></span>
+  <span class="stat">strikes <b id="strikes">–</b></span>
+  <span class="stat" id="lock"></span>
+  <span class="stat dim" id="updated"></span>
+</header>
+<div id="feed" aria-live="polite"></div>
+<script>
+"use strict";
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function render(data){
+  const evs = data.events || [];
+  let lastReply = null;
+  for (let i=evs.length-1;i>=0;i--){ if(evs[i].kind==='reply'){ lastReply=evs[i]; break; } }
+  if (lastReply){
+    document.getElementById('ctx').textContent = lastReply.ctx_tokens || '–';
+    document.getElementById('budget').textContent = lastReply.ctx_budget || '–';
+  }
+  const last = evs[evs.length-1];
+  if (last){
+    document.getElementById('attempt').textContent = last.attempt || '–';
+    document.getElementById('turn').textContent = last.turn || '–';
+  }
+  const s = document.getElementById('strikes');
+  s.textContent = (data.strikes ?? '–') + '/' + (data.max_strikes ?? 3);
+  s.className = data.strikes > 0 ? 'warn' : 'ok';
+  document.getElementById('lock').innerHTML = data.locked
+    ? '<span class="bad">LOCKED — human reset required</span>' : '<span class="ok">unlocked</span>';
+  document.getElementById('updated').textContent = new Date().toLocaleTimeString();
+
+  const feed = document.getElementById('feed');
+  feed.innerHTML = evs.slice().reverse().map(e=>{
+    const t = new Date(e.time).toLocaleTimeString();
+    let cls = e.kind, label = e.kind, body = esc(e.text);
+    if (e.kind==='reply'){ label='model'; }
+    if (e.kind==='action'){ label='→ '+esc(e.tool); }
+    if (e.kind==='result'){ cls+= e.ok?' pass':' fail'; label=esc(e.tool)+(e.ok?' ok':' FAIL'); }
+    if (e.kind==='verify'){ cls+= e.ok?' pass':' fail'; label='VERIFY'; }
+    return '<div class="ev '+cls+'"><span class="meta">'+t+' a'+(e.attempt||'?')+
+           (e.turn?(' t'+e.turn):'')+' '+label+'</span>'+body+'</div>';
+  }).join('');
+}
+async function tick(){
+  try {
+    const r = await fetch('/api/state');
+    render(await r.json());
+  } catch(e) { document.getElementById('updated').textContent = 'disconnected'; }
+}
+tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -1,28 +1,46 @@
 package worker
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"cobra/internal/backend"
 	"cobra/internal/ctxdiet"
 )
 
+// maxRepeat is the in-attempt loop detector's trigger: this many identical
+// consecutive actions or protocol errors abort the attempt. The strike
+// system watches between attempts; this watches within one.
+const maxRepeat = 3
+
 // Agent drives one backend through the tool registry until the model
-// signals done or turns run out. It cannot verify and it cannot touch the
-// repository — both live on the cage side of the binary.
+// signals done, the dead-man's switch fires, or the loop detector trips.
+// It cannot verify and it cannot touch the repository — both live on the
+// cage side of the binary.
 type Agent struct {
-	Backend     backend.Backend
-	Tools       *Registry
-	Budget      ctxdiet.Budget
-	MaxTurns    int // safety valve per attempt; the outer loop re-runs until verify passes or strikes lock
-	Temperature float64
-	Log         func(format string, args ...any)
-	// Trace, when set, receives every dispatched action with its measured
-	// outcome. The binary wires this to the trajectory log — the evolver's
-	// input comes from dispatch facts, not model self-report.
-	Trace func(turn int, tool string, ok bool, summary string)
+	Backend        backend.Backend
+	Tools          *Registry
+	Budget         ctxdiet.Budget
+	MaxTurns       int           // per attempt; the outer loop re-runs until verify passes or strikes lock
+	AttemptTimeout time.Duration // dead-man's switch: wall-clock cap per attempt
+	MaxGenTokens   int           // generation cap per reply
+	Temperature    float64
+
+	// Ralph mode: context is reconstructed every turn — task + DOD +
+	// NOTES.md + last verify report + the last couple of actions. Nothing
+	// accumulates, so nothing overflows. NotesPath is the model's only
+	// durable memory, a plain file inside the jail.
+	Ralph     bool
+	NotesPath string
+
+	Log     func(format string, args ...any)
+	Trace   func(turn int, tool string, ok bool, summary string)
+	Observe func(kind string, fields map[string]any) // live feed for cage watch
 }
 
 type action struct {
@@ -32,12 +50,16 @@ type action struct {
 	Summary string         `json:"summary"`
 }
 
-// Run executes one attempt: task + DOD text (+ previous verify report) in,
-// tool calls until the model signals done. The context diet is enforced
-// every turn: trajectory compression, per-message clamps, hard budget.
+// Run executes one attempt.
 func (a *Agent) Run(task, dodText, verifyReport string) error {
 	if a.MaxTurns <= 0 {
 		a.MaxTurns = 60
+	}
+	if a.AttemptTimeout <= 0 {
+		a.AttemptTimeout = 15 * time.Minute
+	}
+	if a.MaxGenTokens <= 0 {
+		a.MaxGenTokens = 4096
 	}
 	if a.Temperature == 0 {
 		a.Temperature = 0.2
@@ -46,31 +68,44 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
+	observe := a.Observe
+	if observe == nil {
+		observe = func(string, map[string]any) {}
+	}
 
-	system := SystemPrompt(a.Tools.Describe())
-	var user strings.Builder
-	user.WriteString("Task:\n" + task + "\n")
-	if dodText != "" {
-		user.WriteString("\nDefinition of done (the external verifier checks exactly this):\n" + dodText + "\n")
-	}
-	if verifyReport != "" {
-		user.WriteString("\nPrevious verify report — fix every failure listed:\n" + verifyReport + "\n")
-	}
+	deadline := time.Now().Add(a.AttemptTimeout)
+	system := SystemPrompt(a.Tools.Describe(), a.Ralph)
 
 	var steps []ctxdiet.Step
+	lastSig := ""
+	repeatCount := 0
+	repeated := func(sig string) bool {
+		if sig == lastSig {
+			repeatCount++
+		} else {
+			lastSig = sig
+			repeatCount = 1
+		}
+		return repeatCount >= maxRepeat
+	}
+
 	for turn := 1; turn <= a.MaxTurns; turn++ {
-		// Enforce the budget by shedding history until the payload fits —
-		// oldest first, never the task itself.
-		msgs := a.buildMessages(system, user.String(), steps)
+		if time.Now().After(deadline) {
+			return fmt.Errorf("dead-man's switch: attempt exceeded %s at turn %d", a.AttemptTimeout, turn)
+		}
+
+		user := a.buildUser(task, dodText, verifyReport)
+		msgs := a.buildMessages(system, user, steps)
 		for a.overBudget(msgs) && len(steps) > 2 {
 			steps = steps[2:]
-			msgs = a.buildMessages(system, user.String(), steps)
+			msgs = a.buildMessages(system, user, steps)
 		}
 		if a.overBudget(msgs) {
 			return fmt.Errorf("context diet: task + system prompt alone exceed the budget")
 		}
+		ctxTokens := a.payloadTokens(msgs)
 
-		reply, err := a.Backend.Chat(msgs, a.Temperature, 2048)
+		reply, err := a.Backend.Chat(msgs, a.Temperature, a.MaxGenTokens)
 		if err != nil {
 			// A context overflow the estimator missed is recoverable:
 			// shed half the history and retry the turn.
@@ -81,11 +116,22 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 			}
 			return fmt.Errorf("backend %s: %w", a.Backend.Name(), err)
 		}
+		observe("reply", map[string]any{
+			"turn": turn, "text": firstChars(reply, 400),
+			"ctx_tokens": ctxTokens, "ctx_budget": a.Budget.MaxTokens,
+		})
+
 		act, err := parseAction(reply)
 		if err != nil {
+			sig := "protocol:" + firstChars(err.Error(), 60)
+			observe("result", map[string]any{"turn": turn, "tool": "protocol", "ok": false, "text": err.Error()})
+			if repeated(sig) {
+				return fmt.Errorf("loop detected: %d consecutive protocol errors (%s) — aborting attempt", repeatCount, err)
+			}
 			steps = append(steps,
 				ctxdiet.Step{Role: "assistant", Content: a.Budget.ClampMessage(reply)},
-				ctxdiet.Step{Role: "tool", Content: "protocol error: " + err.Error() + " — reply with exactly one JSON object"})
+				ctxdiet.Step{Role: "tool", Content: "protocol error: " + err.Error() + " — reply with exactly one JSON object; use file_write with \"append\": true to write large files in chunks"})
+			steps = a.trim(steps)
 			continue
 		}
 		if act.Done {
@@ -93,8 +139,16 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 			if a.Trace != nil {
 				a.Trace(turn, "done", true, act.Summary)
 			}
+			observe("action", map[string]any{"turn": turn, "tool": "done", "text": act.Summary})
 			return nil
 		}
+
+		sig := act.Tool + "|" + argsHash(act.Args)
+		if repeated(sig) {
+			return fmt.Errorf("loop detected: %s called %d times in a row with identical arguments — aborting attempt", act.Tool, repeatCount)
+		}
+
+		observe("action", map[string]any{"turn": turn, "tool": act.Tool, "text": firstChars(compactArgs(act.Args), 200)})
 		result := a.Tools.Dispatch(act.Tool, act.Args)
 		status := "ok"
 		if !result.OK {
@@ -104,12 +158,49 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 		if a.Trace != nil {
 			a.Trace(turn, act.Tool, result.OK, firstLine(result.Output))
 		}
+		observe("result", map[string]any{"turn": turn, "tool": act.Tool, "ok": result.OK, "text": firstChars(result.Output, 300)})
+
 		steps = append(steps,
 			ctxdiet.Step{Role: "assistant", Content: a.Budget.ClampMessage(reply)},
 			ctxdiet.Step{Role: "tool", Content: fmt.Sprintf("[%s %s] %s", act.Tool, status, ctxdiet.ClampTo(result.Output, a.toolCeiling()))})
-		steps = ctxdiet.Compress(steps, 6)
+		steps = a.trim(steps)
 	}
 	return fmt.Errorf("worker used all %d turns without signalling done", a.MaxTurns)
+}
+
+// buildUser assembles the per-turn user message. In ralph mode this is the
+// whole context reconstruction: everything the model needs, every turn.
+func (a *Agent) buildUser(task, dodText, verifyReport string) string {
+	var sb strings.Builder
+	sb.WriteString("Task:\n" + task + "\n")
+	if dodText != "" {
+		sb.WriteString("\nDefinition of done (the external verifier checks exactly this):\n" + dodText + "\n")
+	}
+	if verifyReport != "" {
+		sb.WriteString("\nPrevious verify report — fix every failure listed:\n" + verifyReport + "\n")
+	}
+	if a.Ralph {
+		notes := "(empty — you have recorded nothing yet)"
+		if a.NotesPath != "" {
+			if data, err := os.ReadFile(a.NotesPath); err == nil && len(data) > 0 {
+				notes = ctxdiet.ClampTo(string(data), 1500)
+			}
+		}
+		sb.WriteString("\nNOTES.md — your only durable memory (conversation resets every turn):\n" + notes + "\n")
+	}
+	return sb.String()
+}
+
+// trim bounds the carried history: ralph mode keeps only the last
+// exchange pair, conversational mode keeps a compressed window.
+func (a *Agent) trim(steps []ctxdiet.Step) []ctxdiet.Step {
+	if a.Ralph {
+		if len(steps) > 2 {
+			return steps[len(steps)-2:]
+		}
+		return steps
+	}
+	return ctxdiet.Compress(steps, 6)
 }
 
 // toolCeiling caps a single tool result well below the prompt ceiling —
@@ -122,11 +213,15 @@ func (a *Agent) toolCeiling() int {
 }
 
 func (a *Agent) overBudget(msgs []backend.Msg) bool {
-	var contents []string
+	return a.payloadTokens(msgs) > a.Budget.MaxTokens && a.Budget.MaxTokens > 0
+}
+
+func (a *Agent) payloadTokens(msgs []backend.Msg) int {
+	total := 0
 	for _, m := range msgs {
-		contents = append(contents, m.Content)
+		total += ctxdiet.Estimate(m.Content)
 	}
-	return a.Budget.CheckTotal(contents) != nil
+	return total
 }
 
 func (a *Agent) buildMessages(system, user string, steps []ctxdiet.Step) []backend.Msg {
@@ -154,8 +249,67 @@ func firstLine(s string) string {
 	return s
 }
 
-// parseAction extracts the first JSON object from a model reply, tolerating
-// prose or code fences around it.
+func firstChars(s string, n int) string {
+	if len(s) > n {
+		return s[:n] + "…"
+	}
+	return s
+}
+
+func compactArgs(args map[string]any) string {
+	data, err := json.Marshal(args)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+func argsHash(args map[string]any) string {
+	data, _ := json.Marshal(args)
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:8])
+}
+
+// repairJSON escapes raw control characters found inside JSON string
+// literals — the dominant local-model failure when a file body rides
+// inside a JSON action ("content":"line1<newline>line2").
+func repairJSON(raw []byte) []byte {
+	var out []byte
+	inString := false
+	escaped := false
+	for _, c := range raw {
+		if inString {
+			switch {
+			case escaped:
+				escaped = false
+			case c == '\\':
+				escaped = true
+			case c == '"':
+				inString = false
+			case c == '\n':
+				out = append(out, '\\', 'n')
+				continue
+			case c == '\r':
+				out = append(out, '\\', 'r')
+				continue
+			case c == '\t':
+				out = append(out, '\\', 't')
+				continue
+			case c < 0x20:
+				out = append(out, []byte(fmt.Sprintf("\\u%04x", c))...)
+				continue
+			}
+		} else if c == '"' {
+			inString = true
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// parseAction extracts the first JSON object from a model reply,
+// tolerating prose or code fences around it, flattened args, and raw
+// control characters inside string values.
 func parseAction(reply string) (*action, error) {
 	start := strings.IndexByte(reply, '{')
 	if start < 0 {
@@ -185,33 +339,39 @@ func parseAction(reply string) (*action, error) {
 		case '}':
 			depth--
 			if depth == 0 {
-				raw := []byte(reply[start : i+1])
-				var act action
-				if err := json.Unmarshal(raw, &act); err != nil {
-					return nil, fmt.Errorf("invalid action JSON: %w", err)
-				}
-				if !act.Done && act.Tool == "" {
-					return nil, fmt.Errorf(`action must set "tool" or "done"`)
-				}
-				// Local models often flatten args to the top level
-				// ({"tool":"x","path":...} instead of nesting under
-				// "args") — accept both shapes.
-				if len(act.Args) == 0 {
-					var flat map[string]any
-					if json.Unmarshal(raw, &flat) == nil {
-						act.Args = map[string]any{}
-						for k, v := range flat {
-							switch k {
-							case "tool", "done", "summary", "args":
-							default:
-								act.Args[k] = v
-							}
-						}
-					}
-				}
-				return &act, nil
+				return decodeAction([]byte(reply[start : i+1]))
 			}
 		}
 	}
-	return nil, fmt.Errorf("unterminated JSON object")
+	return nil, fmt.Errorf("unterminated JSON object — if writing a large file, use file_write with \"append\": true and smaller chunks")
+}
+
+func decodeAction(raw []byte) (*action, error) {
+	var act action
+	err := json.Unmarshal(raw, &act)
+	if err != nil {
+		// Second chance: deterministically repair control chars in strings.
+		raw = repairJSON(raw)
+		if err2 := json.Unmarshal(raw, &act); err2 != nil {
+			return nil, fmt.Errorf("invalid action JSON: %v", err)
+		}
+	}
+	if !act.Done && act.Tool == "" {
+		return nil, fmt.Errorf(`action must set "tool" or "done"`)
+	}
+	// Local models often flatten args to the top level — accept both shapes.
+	if len(act.Args) == 0 {
+		var flat map[string]any
+		if json.Unmarshal(raw, &flat) == nil {
+			act.Args = map[string]any{}
+			for k, v := range flat {
+				switch k {
+				case "tool", "done", "summary", "args":
+				default:
+					act.Args[k] = v
+				}
+			}
+		}
+	}
+	return &act, nil
 }

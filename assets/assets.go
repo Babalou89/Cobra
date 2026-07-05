@@ -12,3 +12,6 @@ var DODExample []byte
 
 //go:embed brain.template.md
 var BrainTemplate []byte
+
+//go:embed dashboard.html
+var DashboardHTML []byte

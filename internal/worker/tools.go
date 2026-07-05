@@ -85,10 +85,19 @@ func DefaultRegistry(w *jail.Workspace, skillsRoot string) *Registry {
 	registerShell(r, w)
 	registerWeb(r)
 	registerSys(r, w)
+	registerNote(r, w)
 	if skillsRoot != "" {
 		registerSkills(r, w, skillsRoot)
 	}
 	return r
+}
+
+// argBool pulls a boolean argument with a default.
+func argBool(args map[string]any, key string, def bool) bool {
+	if v, ok := args[key].(bool); ok {
+		return v
+	}
+	return def
 }
 
 // argString pulls a string argument with a default.
