@@ -12,10 +12,23 @@ type Budget struct {
 	PromptCeiling int // cap for any single message
 }
 
-// Estimate approximates token count from bytes (~4 bytes/token). It is a
-// deliberate over-simplification: deterministic, model-agnostic, and cheap.
+// Estimate approximates token count from bytes. Deliberately conservative
+// (~3 bytes/token): paths, code, and listings tokenize far denser than
+// prose, and a budget that under-counts overflows the real context.
 func Estimate(s string) int {
-	return len(s)/4 + 1
+	return len(s)/3 + 1
+}
+
+// ClampTo truncates content to approximately maxTokens.
+func ClampTo(content string, maxTokens int) string {
+	if maxTokens <= 0 || Estimate(content) <= maxTokens {
+		return content
+	}
+	keep := maxTokens * 3
+	if keep > len(content) {
+		keep = len(content)
+	}
+	return content[:keep] + "\n[…truncated by context diet]"
 }
 
 // CheckMessage refuses a single message over the prompt ceiling.

@@ -59,23 +59,26 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 
 	var steps []ctxdiet.Step
 	for turn := 1; turn <= a.MaxTurns; turn++ {
+		// Enforce the budget by shedding history until the payload fits —
+		// oldest first, never the task itself.
 		msgs := a.buildMessages(system, user.String(), steps)
-		var contents []string
-		for _, m := range msgs {
-			contents = append(contents, m.Content)
+		for a.overBudget(msgs) && len(steps) > 2 {
+			steps = steps[2:]
+			msgs = a.buildMessages(system, user.String(), steps)
 		}
-		if err := a.Budget.CheckTotal(contents); err != nil {
-			// Over budget even after compression: drop the oldest steps.
-			if len(steps) > 4 {
-				steps = steps[len(steps)-4:]
-				msgs = a.buildMessages(system, user.String(), steps)
-			} else {
-				return fmt.Errorf("context diet: %w", err)
-			}
+		if a.overBudget(msgs) {
+			return fmt.Errorf("context diet: task + system prompt alone exceed the budget")
 		}
 
 		reply, err := a.Backend.Chat(msgs, a.Temperature, 2048)
 		if err != nil {
+			// A context overflow the estimator missed is recoverable:
+			// shed half the history and retry the turn.
+			if strings.Contains(err.Error(), "context size") && len(steps) > 2 {
+				logf("context overflow from backend — shedding %d history steps", len(steps)/2)
+				steps = steps[len(steps)/2:]
+				continue
+			}
 			return fmt.Errorf("backend %s: %w", a.Backend.Name(), err)
 		}
 		act, err := parseAction(reply)
@@ -103,10 +106,27 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 		}
 		steps = append(steps,
 			ctxdiet.Step{Role: "assistant", Content: a.Budget.ClampMessage(reply)},
-			ctxdiet.Step{Role: "tool", Content: fmt.Sprintf("[%s %s] %s", act.Tool, status, a.Budget.ClampMessage(result.Output))})
-		steps = ctxdiet.Compress(steps, 8)
+			ctxdiet.Step{Role: "tool", Content: fmt.Sprintf("[%s %s] %s", act.Tool, status, ctxdiet.ClampTo(result.Output, a.toolCeiling()))})
+		steps = ctxdiet.Compress(steps, 6)
 	}
 	return fmt.Errorf("worker used all %d turns without signalling done", a.MaxTurns)
+}
+
+// toolCeiling caps a single tool result well below the prompt ceiling —
+// tool output is the main context flooder.
+func (a *Agent) toolCeiling() int {
+	if a.Budget.PromptCeiling > 0 {
+		return a.Budget.PromptCeiling / 4
+	}
+	return 1500
+}
+
+func (a *Agent) overBudget(msgs []backend.Msg) bool {
+	var contents []string
+	for _, m := range msgs {
+		contents = append(contents, m.Content)
+	}
+	return a.Budget.CheckTotal(contents) != nil
 }
 
 func (a *Agent) buildMessages(system, user string, steps []ctxdiet.Step) []backend.Msg {

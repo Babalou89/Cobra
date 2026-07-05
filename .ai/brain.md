@@ -92,6 +92,7 @@ llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.1.1   | 2026-07-05 | context diet hardened after live overflow (32792>32768 on home-audit run): conservative estimator (len/3), tool-result ceiling (prompt_ceiling/4), shed-until-fits loop, backend overflow recovery, budget auto-capped at 55% of backend MaxContext | internal/ctxdiet/budget.go, internal/worker/agent.go, cmd/run.go |
 | 1.1.0   | 2026-07-05 | Continual Harness v1: cage evolve, gated skill adoption, trajectory log, skill_run tool, .cage write protection | internal/skills/, internal/evolve/, internal/state/trace.go, internal/worker/, cmd/evolve.go, cmd/skills.go, cmd/run.go, README.md |
 | 1.0.1   | 2026-07-04 | live smoke test PASSED: cage run drove Qwen3.5-27B via llama_cpp, worker wrote+tested hello.py, verify passed, binary committed — 1 attempt, 13s | .ai/brain.md, .ai/VERSION |
 | 1.0.0   | 2026-07-04 | COBRA v1 built + verified   | full Go tree: main.go, cmd/, internal/, assets/, hooks/, tests/, README.md |

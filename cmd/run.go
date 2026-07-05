@@ -69,6 +69,13 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		// Never let the configured budget exceed what the backend can
+		// actually hold: cap at ~55% of the model context, reserving the
+		// rest for generation, template overhead, and estimator error.
+		budgetCap := be.MaxContext() * 55 / 100
+		if cfg.Budget.MaxTokens > budgetCap {
+			cfg.Budget.MaxTokens = budgetCap
+		}
 		agent := &worker.Agent{
 			Backend: be,
 			Tools:   worker.DefaultRegistry(jl, skills.Root(dir)),
