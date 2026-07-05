@@ -43,6 +43,8 @@ cage run "implement the thing the DOD describes"
 | `cage session start\|end` | jail setup / archive the report and reset strike bookkeeping. |
 | `cage gate install\|uninstall <bare>` | write/remove the pre-receive hook in a bare repo. |
 | `cage strikes [reset]` | show strike count and lock state; `reset` is human-only. |
+| `cage evolve [--max N]` | continual harness pass: propose skills from trajectories; adopt only what passes the gate. |
+| `cage skills` | list the installed, gate-verified skill library. |
 
 ## Backends
 
@@ -100,6 +102,33 @@ Structural guarantees, enforced by construction:
    agent is spinning = strike. Three consecutive = lock, human reset only.
 6. **Quality checks skip on unknown languages** — a language without
    rules passes; the scraper never fabricates a failure.
+
+## Continual Harness — `cage evolve`
+
+The harness learns; the cage decides. Modeled on the Continual Harness
+idea (an LLM refines its own scaffolding from trajectory windows) with one
+inversion: **the refiner proposes, a deterministic gate adopts.**
+
+Every `cage run` logs each dispatched action — tool, measured outcome,
+first line of output — to `.cage/trajectory.jsonl` (dispatch facts, never
+model self-report). An offline `cage evolve` pass then:
+
+1. Reads the trajectory tail, the last verify report, and the strike state
+   — the ground-truth failure signal the cage already measures.
+2. Asks the backend to propose up to `--max` skills, each as bash
+   `run_sh` plus a self-contained offline `test_sh`.
+3. Stages each candidate and runs its test (30s timeout). Test passes →
+   installed to `.cage/skills/<name>/` and committed by the binary. Test
+   fails → discarded and logged. The proposer's claims count for nothing.
+
+Installed skills appear to the worker as one `skill_run` tool. The worker
+can execute skills but cannot write into `.cage/` — the library only grows
+through the gate, so what accrues there is verified capital, not landfill.
+Because skills are plain code + test, they transfer across backends: swap
+the model and the new one inherits everything its predecessors proved.
+
+Prompt and memory evolution are deliberately out of v1 — prompt changes
+need a benchmark fitness function first.
 
 ## The 8 checks
 

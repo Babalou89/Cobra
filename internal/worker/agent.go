@@ -19,6 +19,10 @@ type Agent struct {
 	MaxTurns    int // safety valve per attempt; the outer loop re-runs until verify passes or strikes lock
 	Temperature float64
 	Log         func(format string, args ...any)
+	// Trace, when set, receives every dispatched action with its measured
+	// outcome. The binary wires this to the trajectory log — the evolver's
+	// input comes from dispatch facts, not model self-report.
+	Trace func(turn int, tool string, ok bool, summary string)
 }
 
 type action struct {
@@ -83,6 +87,9 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 		}
 		if act.Done {
 			logf("worker signalled done after %d turn(s): %s", turn, act.Summary)
+			if a.Trace != nil {
+				a.Trace(turn, "done", true, act.Summary)
+			}
 			return nil
 		}
 		result := a.Tools.Dispatch(act.Tool, act.Args)
@@ -91,6 +98,9 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 			status = "error"
 		}
 		logf("turn %d: %s → %s", turn, act.Tool, status)
+		if a.Trace != nil {
+			a.Trace(turn, act.Tool, result.OK, firstLine(result.Output))
+		}
 		steps = append(steps,
 			ctxdiet.Step{Role: "assistant", Content: a.Budget.ClampMessage(reply)},
 			ctxdiet.Step{Role: "tool", Content: fmt.Sprintf("[%s %s] %s", act.Tool, status, a.Budget.ClampMessage(result.Output))})
@@ -112,6 +122,16 @@ func (a *Agent) buildMessages(system, user string, steps []ctxdiet.Step) []backe
 		msgs = append(msgs, backend.Msg{Role: role, Content: s.Content})
 	}
 	return msgs
+}
+
+func firstLine(s string) string {
+	if idx := strings.IndexByte(s, '\n'); idx >= 0 {
+		s = s[:idx]
+	}
+	if len(s) > 160 {
+		s = s[:160]
+	}
+	return s
 }
 
 // parseAction extracts the first JSON object from a model reply, tolerating
@@ -145,12 +165,29 @@ func parseAction(reply string) (*action, error) {
 		case '}':
 			depth--
 			if depth == 0 {
+				raw := []byte(reply[start : i+1])
 				var act action
-				if err := json.Unmarshal([]byte(reply[start:i+1]), &act); err != nil {
+				if err := json.Unmarshal(raw, &act); err != nil {
 					return nil, fmt.Errorf("invalid action JSON: %w", err)
 				}
 				if !act.Done && act.Tool == "" {
 					return nil, fmt.Errorf(`action must set "tool" or "done"`)
+				}
+				// Local models often flatten args to the top level
+				// ({"tool":"x","path":...} instead of nesting under
+				// "args") — accept both shapes.
+				if len(act.Args) == 0 {
+					var flat map[string]any
+					if json.Unmarshal(raw, &flat) == nil {
+						act.Args = map[string]any{}
+						for k, v := range flat {
+							switch k {
+							case "tool", "done", "summary", "args":
+							default:
+								act.Args[k] = v
+							}
+						}
+					}
 				}
 				return &act, nil
 			}

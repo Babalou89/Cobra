@@ -1,0 +1,91 @@
+# DOD — continual harness v1: gated skill evolution (cage evolve)
+# Verify: ./cage verify --dod .cage/dods/dod-evolve.yaml
+task: "cage evolve — skills-with-tests evolution, adoption gated by deterministic verification"
+name: "evolve-v1"
+description: >
+  The harness learns; the cage decides. A proposer (LLM) reads trajectories,
+  verify reports, and strike data, then proposes skills as code+test. A
+  deterministic gate runs the test; only passing skills are installed and
+  committed by the binary. The verify path stays LLM-free. Prompt/memory
+  evolution is out of scope for v1.
+
+criteria:
+  - name: "skill store + deterministic gate present"
+    verify:
+      - type: exists
+        file: "internal/skills/store.go"
+      - type: exists
+        file: "internal/skills/gate.go"
+      - type: exists
+        file: "internal/skills/skills_test.go"
+      # the gate package must be model-free: no backend, no worker
+      - type: command
+        run: "! grep -rE 'cobra/internal/(backend|worker)' internal/skills"
+        expect_exit: 0
+
+  - name: "proposer present and separated from the enforcer"
+    verify:
+      - type: exists
+        file: "internal/evolve/proposer.go"
+      # the enforcer still imports no model layer
+      - type: command
+        run: "! grep -rE 'cobra/internal/(backend|worker)' internal/cage"
+        expect_exit: 0
+      # evolution artifacts adopted only via the gate
+      - type: grep
+        file: "internal/evolve/proposer.go"
+        regex: "Gate|gate"
+
+  - name: "trajectory logging wired (the evolver's input)"
+    verify:
+      - type: exists
+        file: "internal/state/trace.go"
+      - type: grep
+        file: "internal/worker/agent.go"
+        contains: "Trace"
+      - type: grep
+        file: "cmd/run.go"
+        contains: "AppendTrace"
+
+  - name: "worker cannot tamper with the skill library"
+    verify:
+      - type: grep
+        file: "internal/worker/tools_fs.go"
+        regex: "protected|\\.cage"
+      - type: command
+        run: "! grep -rE 'git.+commit' internal/worker"
+        expect_exit: 0
+
+  - name: "command surface: evolve + skills"
+    verify:
+      - type: exists
+        file: "cmd/evolve.go"
+      - type: exists
+        file: "cmd/skills.go"
+      - type: command
+        run: "go build -o cage . && ./cage --help | grep -q evolve && ./cage --help | grep -q skills"
+        expect_exit: 0
+
+  - name: "gate logic proven by tests"
+    verify:
+      - type: command
+        run: "go test ./internal/skills/ -count=1"
+        expect_exit: 0
+      - type: command
+        run: "go vet ./..."
+        expect_exit: 0
+      - type: command
+        run: "go test ./... -count=1"
+        expect_exit: 0
+
+  - name: "documentation + version moved"
+    verify:
+      - type: grep
+        file: "README.md"
+        contains: "cage evolve"
+      - type: grep
+        file: ".ai/brain.md"
+        regex: "(?i)continual harness|evolve"
+      - type: command
+        run: "grep -q '1.1.0' .ai/VERSION"
+        expect_exit: 0

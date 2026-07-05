@@ -3,10 +3,25 @@ package worker
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"cobra/internal/jail"
 )
+
+// protectedWrite blocks writes into the cage's own records even when the
+// jail encloses them (jail.root: "."). The skill library, state, and
+// audit trail are the binary's — the worker earns nothing except through
+// the gate.
+func protectedWrite(abs string) error {
+	sep := string(filepath.Separator)
+	for _, part := range strings.Split(abs, sep) {
+		if part == ".cage" || part == ".git" {
+			return fmt.Errorf("path %s is protected — the worker cannot write into %s", abs, part)
+		}
+	}
+	return nil
+}
 
 // registerFS wires file tools. Every path is forced through the jail —
 // nothing the model names can land outside it.
@@ -17,6 +32,9 @@ func registerFS(r *Registry, w *jail.Workspace) {
 		Desc:  "read a file inside the workspace",
 		Fn: func(args map[string]any) ToolResult {
 			path := argString(args, "path", "")
+			if path == "" {
+				return ToolResult{OK: false, Output: `missing "path" argument`}
+			}
 			data, err := w.ReadFile(path)
 			if err != nil {
 				return ToolResult{OK: false, Output: err.Error()}
@@ -31,8 +49,17 @@ func registerFS(r *Registry, w *jail.Workspace) {
 		Fn: func(args map[string]any) ToolResult {
 			path := argString(args, "path", "")
 			content := argString(args, "content", "")
-			abs, err := w.WriteFile(path, []byte(content))
+			if path == "" {
+				return ToolResult{OK: false, Output: `missing "path" argument`}
+			}
+			abs, err := w.Resolve(path)
 			if err != nil {
+				return ToolResult{OK: false, Output: err.Error()}
+			}
+			if err := protectedWrite(abs); err != nil {
+				return ToolResult{OK: false, Output: err.Error()}
+			}
+			if abs, err = w.WriteFile(path, []byte(content)); err != nil {
 				return ToolResult{OK: false, Output: err.Error()}
 			}
 			return ToolResult{OK: true, Output: fmt.Sprintf("wrote %d bytes to %s", len(content), abs)}
@@ -48,6 +75,11 @@ func registerFS(r *Registry, w *jail.Workspace) {
 			newStr := argString(args, "new", "")
 			if oldStr == "" {
 				return ToolResult{OK: false, Output: "old string must not be empty"}
+			}
+			if abs, rerr := w.Resolve(path); rerr == nil {
+				if perr := protectedWrite(abs); perr != nil {
+					return ToolResult{OK: false, Output: perr.Error()}
+				}
 			}
 			data, err := w.ReadFile(path)
 			if err != nil {

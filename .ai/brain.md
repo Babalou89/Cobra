@@ -18,7 +18,7 @@ tree, no venv, no folder sprawl.
 - No external services. State is flat files under `.cage/`. No mem9.
 
 ## Current State
-- Version: 1.0.1 — COBRA v1 BUILT: `cage` binary compiles, all tests pass,
+- Version: 1.1.0 — Continual Harness v1: cage evolve with gated skill adoption
   every cobra-build.yaml criterion verified locally on babalou
 - Spec of record: `COBRA-BUILD.md` (brief) + `cobra-build.yaml` (DOD)
 - Source lineage: clean kimiversonf Hermes Cage v1.0 + cage-monitor + verify.sh,
@@ -51,6 +51,18 @@ COBRA v1 is built. Next: exercise `cage run` against a real task with the
 llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 
 ## Session Log
+### 2026-07-05 — Continual Harness v1 (Claude, babalou)
+- `cage evolve` built: internal/skills (store + deterministic gate + 6 tests),
+  internal/evolve (proposer — the ONLY new package importing backend),
+  state/trace.go trajectory logging, worker skill_run tool, cmd/evolve + cmd/skills
+- Design: proposer proposes skills as run_sh+test_sh; gate runs the test;
+  pass = installed + committed by the binary, fail = discarded. Worker cannot
+  write .cage/ or .git/ (protectedWrite guard). Verify path still model-free.
+- Rationale from continual-agent autopsy: self-evolution without a deterministic
+  fitness gate self-corrupted on generation 1 (prompt contaminated, empty
+  duplicate skills, /tmp memorized). Gate fixes attribution.
+- DOD: .cage/dods/dod-evolve.yaml — verified with ./cage verify --dod
+- Prompt/memory evolution deferred: needs benchmark fitness function first
 ### 2026-07-04 — COBRA v1 built (Claude, babalou)
 - Wrote the full tree per COBRA-BUILD.md §2: 4 backend files, 7 worker files,
   6 cage files, jail+test, 6 state files+test, ctxdiet (3), memory, config,
@@ -80,6 +92,7 @@ llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.1.0   | 2026-07-05 | Continual Harness v1: cage evolve, gated skill adoption, trajectory log, skill_run tool, .cage write protection | internal/skills/, internal/evolve/, internal/state/trace.go, internal/worker/, cmd/evolve.go, cmd/skills.go, cmd/run.go, README.md |
 | 1.0.1   | 2026-07-04 | live smoke test PASSED: cage run drove Qwen3.5-27B via llama_cpp, worker wrote+tested hello.py, verify passed, binary committed — 1 attempt, 13s | .ai/brain.md, .ai/VERSION |
 | 1.0.0   | 2026-07-04 | COBRA v1 built + verified   | full Go tree: main.go, cmd/, internal/, assets/, hooks/, tests/, README.md |
 | 0.0.1   | 2026-06-28 | Spec written, repo seeded   | COBRA-BUILD.md, cobra-build.yaml, .ai/brain.md, .ai/VERSION |

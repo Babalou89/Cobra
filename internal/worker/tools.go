@@ -76,13 +76,18 @@ func (r *Registry) names() []string {
 	return out
 }
 
-// DefaultRegistry wires the full toolset against one jail.
-func DefaultRegistry(w *jail.Workspace) *Registry {
+// DefaultRegistry wires the full toolset against one jail. skillsRoot may
+// be empty (no skill library); installed skills appear as one skill_run
+// tool, read-only from the worker's side.
+func DefaultRegistry(w *jail.Workspace, skillsRoot string) *Registry {
 	r := NewRegistry()
 	registerFS(r, w)
 	registerShell(r, w)
 	registerWeb(r)
 	registerSys(r, w)
+	if skillsRoot != "" {
+		registerSkills(r, w, skillsRoot)
+	}
 	return r
 }
 

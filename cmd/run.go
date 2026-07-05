@@ -14,6 +14,7 @@ import (
 	"cobra/internal/ctxdiet"
 	"cobra/internal/gitx"
 	"cobra/internal/jail"
+	"cobra/internal/skills"
 	"cobra/internal/state"
 	"cobra/internal/worker"
 )
@@ -70,10 +71,15 @@ var runCmd = &cobra.Command{
 		}
 		agent := &worker.Agent{
 			Backend: be,
-			Tools:   worker.DefaultRegistry(jl),
+			Tools:   worker.DefaultRegistry(jl, skills.Root(dir)),
 			Budget:  ctxdiet.Budget{MaxTokens: cfg.Budget.MaxTokens, PromptCeiling: cfg.Budget.PromptCeiling},
 			Log: func(format string, a ...any) {
 				fmt.Printf("  "+format+"\n", a...)
+			},
+			Trace: func(turn int, tool string, ok bool, summary string) {
+				_ = state.AppendTrace(state.TracePath(dir), state.TraceStep{
+					Task: firstLineOf(task), Turn: turn, Tool: tool, OK: ok, Summary: summary,
+				})
 			},
 		}
 
