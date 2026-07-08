@@ -85,6 +85,7 @@ var runCmd = &cobra.Command{
 			MaxTurns:       cfg.Worker.MaxTurns,
 			AttemptTimeout: time.Duration(cfg.Worker.AttemptSeconds) * time.Second,
 			MaxGenTokens:   cfg.Worker.MaxGenTokens,
+			Temperature:    cfg.Worker.Temperature,
 			Ralph:          cfg.Worker.Mode != "conversational",
 			NotesPath:      filepath.Join(jl.Root, "NOTES.md"),
 			Log: func(format string, a ...any) {

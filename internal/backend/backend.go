@@ -48,7 +48,10 @@ func paramInt(params map[string]string, key string, def int) int {
 }
 
 func newHTTPClient() *http.Client {
-	return &http.Client{Timeout: 300 * time.Second}
+	// Slow local models (a dense 32B split across GPUs at ~20 tok/s can spend
+	// ~7 min on a full 8k-token thinking turn) need a generous per-request
+	// ceiling; the attempt-level dead-man's switch remains the real bound.
+	return &http.Client{Timeout: 900 * time.Second}
 }
 
 // openAIMessage mirrors the OpenAI-compatible chat message shape used by

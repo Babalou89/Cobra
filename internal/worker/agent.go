@@ -62,7 +62,7 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 		a.MaxGenTokens = 4096
 	}
 	if a.Temperature == 0 {
-		a.Temperature = 0.2
+		a.Temperature = 0.6
 	}
 	logf := a.Log
 	if logf == nil {

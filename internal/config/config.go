@@ -38,7 +38,8 @@ type Config struct {
 		Mode           string `yaml:"mode"`            // ralph (default) | conversational
 		MaxTurns       int    `yaml:"max_turns"`       // per attempt
 		AttemptSeconds int    `yaml:"attempt_seconds"` // dead-man's switch
-		MaxGenTokens   int    `yaml:"max_gen_tokens"`  // generation cap per reply
+		MaxGenTokens   int     `yaml:"max_gen_tokens"` // generation cap per reply
+		Temperature    float64 `yaml:"temperature"`    // sampling temp; 0.6 suits Qwen3/thinking models
 	} `yaml:"worker"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
 }
@@ -62,6 +63,7 @@ func Defaults() *Config {
 	c.Worker.MaxTurns = 60
 	c.Worker.AttemptSeconds = 900
 	c.Worker.MaxGenTokens = 8192
+	c.Worker.Temperature = 0.6
 	c.CooldownSeconds = 10
 	return c
 }
@@ -104,6 +106,9 @@ func Load(dir string) (*Config, error) {
 	}
 	if cfg.Worker.MaxGenTokens <= 0 {
 		cfg.Worker.MaxGenTokens = 8192
+	}
+	if cfg.Worker.Temperature <= 0 {
+		cfg.Worker.Temperature = 0.6
 	}
 	return cfg, nil
 }
