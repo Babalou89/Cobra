@@ -13,8 +13,10 @@ backend:
 dod: ".cage/dods/example.yaml"
 
 # The agent's entire world. Nothing it writes lands outside this directory.
+# The project root is the jail: the worker edits files in place, the cage
+# verifies and commits them, and .cage/.git stay protected from its writes.
 jail:
-  root: ".cage/jail"
+  root: "."
 
 # Context diet — always on.
 budget:

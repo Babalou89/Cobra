@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -115,8 +116,10 @@ func chatOpenAI(client *http.Client, url string, headers map[string]string, mode
 	}
 	var out struct {
 		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
+			FinishReason string `json:"finish_reason"`
+			Message      struct {
+				Content          string `json:"content"`
+				ReasoningContent string `json:"reasoning_content"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
@@ -126,7 +129,21 @@ func chatOpenAI(client *http.Client, url string, headers map[string]string, mode
 	if len(out.Choices) == 0 {
 		return "", fmt.Errorf("backend returned no choices")
 	}
-	return out.Choices[0].Message.Content, nil
+	ch := out.Choices[0]
+	// Reasoning models (e.g. the gemma4 "peg" format) stream chain-of-thought
+	// into reasoning_content and only emit the answer in content once thinking
+	// ends. A reply truncated mid-thought leaves content empty; returning ""
+	// would make the worker's parser fail and burn no-progress strikes. Surface
+	// the truncation clearly, and fall back to reasoning_content otherwise.
+	if strings.TrimSpace(ch.Message.Content) == "" {
+		if ch.FinishReason == "length" {
+			return "", fmt.Errorf("model hit max_tokens (%d) mid-reasoning with empty content — raise worker.max_gen_tokens", maxTokens)
+		}
+		if rc := strings.TrimSpace(ch.Message.ReasoningContent); rc != "" {
+			return rc, nil
+		}
+	}
+	return ch.Message.Content, nil
 }
 
 func truncate(s string, n int) string {

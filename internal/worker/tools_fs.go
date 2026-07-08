@@ -12,13 +12,20 @@ import (
 // protectedWrite blocks writes into the cage's own records even when the
 // jail encloses them (jail.root: "."). The skill library, state, and
 // audit trail are the binary's — the worker earns nothing except through
-// the gate.
-func protectedWrite(abs string) error {
-	sep := string(filepath.Separator)
-	for _, part := range strings.Split(abs, sep) {
-		if part == ".cage" || part == ".git" {
-			return fmt.Errorf("path %s is protected — the worker cannot write into %s", abs, part)
-		}
+// the gate. The check is relative to the jail root so it protects a .cage
+// or .git the worker would create *inside* its jail, without tripping on the
+// jail's own enclosing path (the default root is itself .cage/jail).
+func protectedWrite(root, abs string) error {
+	rel, err := filepath.Rel(root, abs)
+	if err != nil {
+		return nil // unrelatable paths are already confined by Resolve
+	}
+	first := rel
+	if i := strings.IndexRune(rel, filepath.Separator); i >= 0 {
+		first = rel[:i]
+	}
+	if first == ".cage" || first == ".git" {
+		return fmt.Errorf("path %s is protected — the worker cannot write into %s", abs, first)
 	}
 	return nil
 }
@@ -56,7 +63,7 @@ func registerFS(r *Registry, w *jail.Workspace) {
 			if err != nil {
 				return ToolResult{OK: false, Output: err.Error()}
 			}
-			if err := protectedWrite(abs); err != nil {
+			if err := protectedWrite(w.Root, abs); err != nil {
 				return ToolResult{OK: false, Output: err.Error()}
 			}
 			if argBool(args, "append", false) {
@@ -91,7 +98,7 @@ func registerFS(r *Registry, w *jail.Workspace) {
 				return ToolResult{OK: false, Output: "old string must not be empty"}
 			}
 			if abs, rerr := w.Resolve(path); rerr == nil {
-				if perr := protectedWrite(abs); perr != nil {
+				if perr := protectedWrite(w.Root, abs); perr != nil {
 					return ToolResult{OK: false, Output: perr.Error()}
 				}
 			}

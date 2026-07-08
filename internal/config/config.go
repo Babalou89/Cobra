@@ -53,7 +53,7 @@ func Defaults() *Config {
 		"model":    "local",
 	}
 	c.DOD = ""
-	c.Jail.Root = filepath.Join(".cage", "jail")
+	c.Jail.Root = "."
 	c.Budget.MaxTokens = 24000
 	c.Budget.PromptCeiling = 8000
 	c.Memory.Enabled = false
@@ -61,7 +61,7 @@ func Defaults() *Config {
 	c.Worker.Mode = "ralph"
 	c.Worker.MaxTurns = 60
 	c.Worker.AttemptSeconds = 900
-	c.Worker.MaxGenTokens = 4096
+	c.Worker.MaxGenTokens = 8192
 	c.CooldownSeconds = 10
 	return c
 }
@@ -85,7 +85,7 @@ func Load(dir string) (*Config, error) {
 		return nil, fmt.Errorf("parse %s: %w", Path(dir), err)
 	}
 	if cfg.Jail.Root == "" {
-		cfg.Jail.Root = filepath.Join(".cage", "jail")
+		cfg.Jail.Root = "."
 	}
 	if cfg.Budget.MaxTokens <= 0 {
 		cfg.Budget.MaxTokens = 24000
@@ -103,7 +103,7 @@ func Load(dir string) (*Config, error) {
 		cfg.Worker.AttemptSeconds = 900
 	}
 	if cfg.Worker.MaxGenTokens <= 0 {
-		cfg.Worker.MaxGenTokens = 4096
+		cfg.Worker.MaxGenTokens = 8192
 	}
 	return cfg, nil
 }
