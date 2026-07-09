@@ -41,6 +41,9 @@ type Config struct {
 		MaxGenTokens   int     `yaml:"max_gen_tokens"` // generation cap per reply
 		Temperature    float64 `yaml:"temperature"`    // sampling temp; 0.6 suits Qwen3/thinking models
 	} `yaml:"worker"`
+	PlanningStage struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"planning_stage"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
 	MypyStage struct {
 		Enabled bool `yaml:"enabled"`
@@ -67,6 +70,7 @@ func Defaults() *Config {
 	c.Worker.AttemptSeconds = 900
 	c.Worker.MaxGenTokens = 8192
 	c.Worker.Temperature = 0.6
+	c.PlanningStage.Enabled = false
 	c.MypyStage.Enabled = false
 	c.CooldownSeconds = 10
 	return c
