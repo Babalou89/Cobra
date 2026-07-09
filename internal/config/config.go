@@ -45,9 +45,10 @@ type Config struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"planning_stage"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
-	MypyStage struct {
+	// Critic toggles the mypy post-pass critic on touched .py files.
+	Critic struct {
 		Enabled bool `yaml:"enabled"`
-	} `yaml:"mypy_stage"`
+	} `yaml:"critic"`
 }
 
 // Defaults returns the built-in configuration: local llama-server backend,
@@ -71,7 +72,7 @@ func Defaults() *Config {
 	c.Worker.MaxGenTokens = 8192
 	c.Worker.Temperature = 0.6
 	c.PlanningStage.Enabled = false
-	c.MypyStage.Enabled = false
+	c.Critic.Enabled = false
 	c.CooldownSeconds = 10
 	return c
 }

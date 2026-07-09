@@ -47,11 +47,41 @@ func TestRemediateAllowlist(t *testing.T) {
 	}
 }
 
-func TestBoundedRemediate(t *testing.T) {
-	// mypy may not be installed, so just test the round limit.
-	_, _, err := BoundedRemediate([]string{}, MaxRounds+1)
+func TestBoundedRemediateFiresAndBounds(t *testing.T) {
+	// Deterministic test using a fixture with a real mypy type error.
+	// We exercise the critic firing (non-zero errors) and the MaxRounds bound.
+	pyFile := "../../tests/fixtures/critic/bad.py"
+	// Round 1 should detect the type error.
+	r1, allowlist1, err := BoundedRemediate([]string{pyFile}, 1)
+	if err != nil {
+		t.Fatalf("round 1 failed: %v", err)
+	}
+	if len(r1.Errors) == 0 {
+		t.Fatal("expected mypy errors in round 1, got none")
+	}
+	found := false
+	for _, e := range r1.Errors {
+		if strings.Contains(e.Message, "Incompatible return value type") || strings.Contains(e.Message, "Incompatible return type") || strings.Contains(e.Message, "Incompatible types") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected incompatible return type error, got: %v", r1.Errors)
+	}
+	if len(allowlist1) != 1 {
+		t.Fatalf("expected 1 allowlisted file, got %d", len(allowlist1))
+	}
+	// Round limit must reject anything > MaxRounds.
+	_, _, err = BoundedRemediate([]string{pyFile}, MaxRounds+1)
 	if err == nil || !strings.Contains(err.Error(), "max rounds") {
 		t.Fatalf("expected max rounds error, got %v", err)
+	}
+	// Allowlist enforcement: the same file is allowed, a different one is not.
+	if err := CheckAllowlist([]string{pyFile}, allowlist1); err != nil {
+		t.Fatalf("expected file to be in allowlist: %v", err)
+	}
+	if err := CheckAllowlist([]string{"../../tests/fixtures/critic/other.py"}, allowlist1); err == nil {
+		t.Fatal("expected error for out-of-allowlist file")
 	}
 }
 

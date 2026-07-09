@@ -1,4 +1,4 @@
-package cmd
+	package cmd
 
 import (
 	"encoding/json"
@@ -13,6 +13,7 @@ import (
 	"cobra/internal/backend"
 	"cobra/internal/cage"
 	"cobra/internal/config"
+	"cobra/internal/critic"
 	"cobra/internal/ctxdiet"
 	"cobra/internal/gitx"
 	"cobra/internal/jail"
@@ -169,6 +170,40 @@ var runCmd = &cobra.Command{
 			_ = state.WriteReport(dir, state.QualityReport{Time: time.Now(), Passed: res.Passed, Failures: res.Failures})
 
 			if res.Passed {
+				// Post-pass critic: run mypy on touched .py files when enabled.
+				if cfg.Critic.Enabled {
+					changed, err := gitx.ChangedFiles(dir)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "critic: could not list changed files: %v\n", err)
+					} else {
+						var pyFiles []string
+						for _, f := range changed {
+							if strings.HasSuffix(f, ".py") {
+								pyFiles = append(pyFiles, f)
+							}
+						}
+						if len(pyFiles) > 0 {
+							fmt.Printf("critic: running mypy on %d touched .py file(s)\n", len(pyFiles))
+							for round := 1; round <= critic.MaxRounds; round++ {
+								r, allowlist, err := critic.BoundedRemediate(pyFiles, round)
+								if err != nil {
+									fmt.Fprintf(os.Stderr, "critic: bounded remediate failed: %v\n", err)
+									break
+								}
+								if len(r.Errors) == 0 {
+									fmt.Println("critic: mypy clean")
+									break
+								}
+								fmt.Printf("critic: round %d — %d error(s)\n", r.Number, len(r.Errors))
+								_ = allowlist // allowlist available for future enforcement hooks
+								if round == critic.MaxRounds {
+									fmt.Fprintf(os.Stderr, "critic: max rounds reached, %d residual error(s)\n", len(r.Errors))
+								}
+							}
+						}
+					}
+				}
+
 				// The binary — never the worker — holds commit authority.
 				msg := "cage: " + firstLineOf(task)
 				if err := gitx.CommitAll(dir, msg); err != nil {
