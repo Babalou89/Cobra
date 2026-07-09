@@ -80,6 +80,15 @@ func LoadDOD(path string) (*DOD, error) {
 	return &d, nil
 }
 
+// CriteriaNames returns the names of all criteria.
+func (d *DOD) CriteriaNames() []string {
+	names := make([]string, len(d.Criteria))
+	for i, c := range d.Criteria {
+		names[i] = c.Name
+	}
+	return names
+}
+
 // Evaluate runs every criterion in dir and returns one failure string per
 // failed check. Empty result = all criteria hold.
 func (d *DOD) Evaluate(dir string) []string {

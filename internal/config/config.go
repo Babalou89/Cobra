@@ -3,6 +3,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,7 +42,14 @@ type Config struct {
 		MaxGenTokens   int     `yaml:"max_gen_tokens"` // generation cap per reply
 		Temperature    float64 `yaml:"temperature"`    // sampling temp; 0.6 suits Qwen3/thinking models
 	} `yaml:"worker"`
+	PlanningStage struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"planning_stage"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
+	// Critic toggles the mypy post-pass critic on touched .py files.
+	Critic struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"critic"`
 }
 
 // Defaults returns the built-in configuration: local llama-server backend,
@@ -64,6 +72,8 @@ func Defaults() *Config {
 	c.Worker.AttemptSeconds = 900
 	c.Worker.MaxGenTokens = 8192
 	c.Worker.Temperature = 0.6
+	c.PlanningStage.Enabled = false
+	c.Critic.Enabled = false
 	c.CooldownSeconds = 10
 	return c
 }
@@ -83,7 +93,12 @@ func Load(dir string) (*Config, error) {
 		}
 		return nil, err
 	}
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	// Strict decode: an unknown or misspelled key (e.g. "planning" instead of
+	// "planning_stage") is a hard error, not a silent no-op that quietly leaves
+	// a feature off.
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(cfg); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", Path(dir), err)
 	}
 	if cfg.Jail.Root == "" {

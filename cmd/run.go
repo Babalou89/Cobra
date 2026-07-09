@@ -1,6 +1,7 @@
-package cmd
+	package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +13,11 @@ import (
 	"cobra/internal/backend"
 	"cobra/internal/cage"
 	"cobra/internal/config"
+	"cobra/internal/critic"
 	"cobra/internal/ctxdiet"
 	"cobra/internal/gitx"
 	"cobra/internal/jail"
+	"cobra/internal/plan"
 	"cobra/internal/skills"
 	"cobra/internal/state"
 	"cobra/internal/worker"
@@ -64,6 +67,29 @@ var runCmd = &cobra.Command{
 		}
 		if !be.Health() {
 			fmt.Fprintf(os.Stderr, "warning: backend %s failed its health check — continuing\n", be.Name())
+		}
+
+		if cfg.PlanningStage.Enabled {
+			fmt.Println("planning stage enabled — generating plan")
+			p, err := plan.GeneratePlan(be, task, string(dodText), dod.CriteriaNames())
+			if err != nil {
+				return fmt.Errorf("planning stage failed: %w", err)
+			}
+			planPath := filepath.Join(dir, ".cage", "plan.json")
+			data, err := json.MarshalIndent(p, "", "  ")
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(planPath, append(data, '\n'), 0o644); err != nil {
+				return err
+			}
+			gaps := plan.CoverageGaps(dod.CriteriaNames(), p)
+			if len(gaps) > 0 {
+				fmt.Printf("plan written to %s (%d steps, %d coverage gaps)\n", planPath, len(p.Steps), len(gaps))
+			} else {
+				fmt.Printf("plan written to %s (%d steps, full coverage)\n", planPath, len(p.Steps))
+			}
+			_ = state.Audit(state.AuditPath(dir), "run.plan", map[string]any{"steps": len(p.Steps), "gaps": len(gaps)})
 		}
 
 		jl, err := jail.New(cfg.Jail.Root)
@@ -144,6 +170,40 @@ var runCmd = &cobra.Command{
 			_ = state.WriteReport(dir, state.QualityReport{Time: time.Now(), Passed: res.Passed, Failures: res.Failures})
 
 			if res.Passed {
+				// Post-pass critic: run mypy on touched .py files when enabled.
+				if cfg.Critic.Enabled {
+					changed, err := gitx.ChangedFiles(dir)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "critic: could not list changed files: %v\n", err)
+					} else {
+						var pyFiles []string
+						for _, f := range changed {
+							if strings.HasSuffix(f, ".py") {
+								pyFiles = append(pyFiles, f)
+							}
+						}
+						if len(pyFiles) > 0 {
+							fmt.Printf("critic: running mypy on %d touched .py file(s)\n", len(pyFiles))
+							for round := 1; round <= critic.MaxRounds; round++ {
+								r, allowlist, err := critic.BoundedRemediate(pyFiles, round)
+								if err != nil {
+									fmt.Fprintf(os.Stderr, "critic: bounded remediate failed: %v\n", err)
+									break
+								}
+								if len(r.Errors) == 0 {
+									fmt.Println("critic: mypy clean")
+									break
+								}
+								fmt.Printf("critic: round %d — %d error(s)\n", r.Number, len(r.Errors))
+								_ = allowlist // allowlist available for future enforcement hooks
+								if round == critic.MaxRounds {
+									fmt.Fprintf(os.Stderr, "critic: max rounds reached, %d residual error(s)\n", len(r.Errors))
+								}
+							}
+						}
+					}
+				}
+
 				// The binary — never the worker — holds commit authority.
 				msg := "cage: " + firstLineOf(task)
 				if err := gitx.CommitAll(dir, msg); err != nil {

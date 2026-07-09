@@ -1,0 +1,41 @@
+task: "wire the planning stage into cage run as a toggleable plugin (behavior, not just code)"
+name: "module1b-planning-wired"
+description: >
+  cage run must actually invoke the planning stage when planning.enabled=true
+  and behave exactly as before when false. Prove it with a test that runs the
+  loop with a fake backend and asserts the plan path fires only when enabled.
+criteria:
+  - name: "builds, vets, tests"
+    verify:
+      - type: command
+        run: "go build ./..."
+        expect_exit: 0
+      - type: command
+        run: "go vet ./..."
+        expect_exit: 0
+      - type: command
+        run: "go test ./..."
+        expect_exit: 0
+  - name: "the run loop references the plan package (actually wired)"
+    verify:
+      - type: grep
+        file: "cmd/run.go"
+        regex: "internal/plan|plan\\.|Planning"
+  - name: "a behavioral test proves the toggle changes behavior"
+    verify:
+      - type: command
+        run: "ls cmd/*plan*_test.go internal/worker/*plan*_test.go 2>/dev/null | head -1 | grep -q ."
+        expect_exit: 0
+      - type: command
+        run: "grep -rlE 'Planning|planning' cmd/*_test.go internal/worker/*_test.go 2>/dev/null | xargs -r grep -lE 'fake|Fake|enabled|Enabled' | grep -q ."
+        expect_exit: 0
+  - name: "still a plug: planning disabled by default"
+    verify:
+      - type: grep
+        file: "internal/config/config.go"
+        regex: "PlanningStage"
+  - name: "version bumped"
+    verify:
+      - type: command
+        run: "test \"$(cat .ai/VERSION)\" != \"1.3.1\""
+        expect_exit: 0

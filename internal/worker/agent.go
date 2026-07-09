@@ -282,6 +282,13 @@ func repairJSON(raw []byte) []byte {
 			switch {
 			case escaped:
 				escaped = false
+				// \' is invalid JSON (but valid in Python) — models emit it when
+				// embedding code with single quotes. Drop the backslash we already
+				// wrote; the model meant a bare '. Deterministic repair of a
+				// single-answer syntax error — never an interpretation of intent.
+				if c == '\'' && len(out) > 0 && out[len(out)-1] == '\\' {
+					out = out[:len(out)-1]
+				}
 			case c == '\\':
 				escaped = true
 			case c == '"':
