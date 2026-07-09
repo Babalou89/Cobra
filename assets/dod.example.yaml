@@ -23,6 +23,22 @@ criteria:
         run: "true # replace with your test command"
         expect_exit: 0
 
+  - name: "lint is clean (ruff)"
+    verify:
+      # Runs ruff's default ruleset (real bugs, not style nitpicks). Skips
+      # gracefully if ruff is not installed — never fail on a missing tool.
+      - type: command
+        run: "if command -v ruff >/dev/null 2>&1; then ruff check .; else echo 'ruff not installed — skipping'; fi"
+        expect_exit: 0
+
+  # Opt-in, per project — type checking is stricter and can over-burden the
+  # worker (it chases annotations). Uncomment only where you want it enforced:
+  # - name: "types check (mypy)"
+  #   verify:
+  #     - type: command
+  #       run: "if command -v mypy >/dev/null 2>&1; then mypy .; else echo 'mypy not installed — skipping'; fi"
+  #       expect_exit: 0
+
 # Optional quality thresholds applied to every touched code file:
 # quality:
 #   min_code_lines: 5
