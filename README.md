@@ -59,6 +59,15 @@ reached over HTTP through the `Backend` interface, no rebuild to switch:
 All three are plain `net/http` — no SDKs, and API keys never live in
 source or config.
 
+**Reasoning models** (Qwen3, gemma "thinking", DeepSeek-style) are handled
+natively: the backend reads `reasoning_content` as well as `content`, so a
+reply truncated mid-thought is surfaced as an explicit error instead of an
+empty reply that would burn a no-progress strike. Sampling temperature is
+configurable (`worker.temperature`, default `0.6` — low temp makes thinking
+models loop), and the per-request HTTP timeout is generous so a slow local
+model (a split 32B at ~20 tok/s can spend minutes on one thinking turn) is
+not severed mid-generation.
+
 ## The DOD
 
 A DOD is a YAML contract of criteria, each a list of deterministic
@@ -165,6 +174,22 @@ need a benchmark fitness function first.
 `impo` unused imports · `dupl` identical-hash files · `stru` structure.
 
 Run them on any single file with `cage peek <file>`.
+
+## Changelog
+
+**v1.3.0** — reasoning-model readiness
+- Backend reads `reasoning_content` + `finish_reason`; truncated thinking
+  no longer becomes an empty reply that trips the strike logic.
+- `worker.temperature` is configurable (default `0.6` for Qwen3/thinking).
+- Backend HTTP timeout raised to 900s so slow local 32Bs are not cut off.
+- The jail root defaults to the project root, so the worker's output lands
+  where `verify` and `commit` look; `.cage`/`.git` stay write-protected
+  relative to the jail.
+- The default DOD ships a `ruff` lint criterion (skips gracefully if ruff
+  is absent); `mypy` is a commented, opt-in criterion.
+
+**v1.2.0** — THE SPINE: dead-man's switch, in-attempt loop abort, ralph
+mode, `cage watch` dashboard.
 
 ## Versioning
 
