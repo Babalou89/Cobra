@@ -3,6 +3,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -92,7 +93,12 @@ func Load(dir string) (*Config, error) {
 		}
 		return nil, err
 	}
-	if err := yaml.Unmarshal(data, cfg); err != nil {
+	// Strict decode: an unknown or misspelled key (e.g. "planning" instead of
+	// "planning_stage") is a hard error, not a silent no-op that quietly leaves
+	// a feature off.
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(cfg); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", Path(dir), err)
 	}
 	if cfg.Jail.Root == "" {

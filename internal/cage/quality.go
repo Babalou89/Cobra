@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"cobra/internal/gitx"
 )
@@ -34,6 +35,13 @@ func QualityOfficer(dir string, disabled map[string]bool, thresholds *Thresholds
 
 	bySHA := map[string][]string{}
 	for _, rel := range changed {
+		// The cage's own files are not the deliverable — never grade them:
+		// the code-execution scratch file, the worker's memory scratchpad,
+		// and everything under .cage/.
+		if rel == ".cage_snippet.py" || rel == "NOTES.md" ||
+			rel == ".cage" || strings.HasPrefix(rel, ".cage/") {
+			continue
+		}
 		abs := filepath.Join(dir, rel)
 		info, err := os.Stat(abs)
 		if err != nil || info.IsDir() {
