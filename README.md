@@ -37,7 +37,8 @@ cage run "implement the thing the DOD describes"
 | Command | Behavior |
 |---|---|
 | `cage init` | scaffold `.cage/` (config, state, dods/, reports/) + `.ai/` (brain.md, VERSION). Refuses if already initialized. |
-| `cage run "<task>"` | jail, load + validate the DOD (zero criteria = hard fail), run the worker loop, verify, commit on pass. |
+| `cage run "<task>"` | jail, load + validate the DOD (zero criteria = hard fail), run the worker loop, verify, commit on pass. Optional plugins via config: `planning_stage.enabled`, `critic.enabled`. |
+| `cage plan "<task>"` | generate an audited step-plan from the DOD — coverage-checked against every criterion — written to `.cage/plan.json`. |
 | `cage verify [--gate] [--dod FILE] [--worktree DIR]` | run core checks → DOD criteria → quality officer. Exit 0 pass, 1 fail. `--dod` evaluates one DOD file only. |
 | `cage peek <file>` | the 8 quality checks on one file, boxed output, preview only, no strike. |
 | `cage session start\|end` | jail setup / archive the report and reset strike bookkeeping. |
@@ -176,6 +177,23 @@ need a benchmark fitness function first.
 Run them on any single file with `cage peek <file>`.
 
 ## Changelog
+
+**v1.4.0** — pluggable planning + critic, burn-in hardening
+- **Planning stage** (opt-in, `planning_stage.enabled`): `cage plan` and an
+  in-run stage generate a step-plan from the DOD and audit it for coverage —
+  every criterion must be addressed. Gives a model structure to execute against
+  instead of spiral.
+- **mypy critic** (opt-in, `critic.enabled`): a deterministic post-pass stage
+  that runs mypy on touched `.py` files, bounded by max-rounds and scoped by an
+  allowlist. No LLM in the verdict.
+- Both ship as toggleable plugins, **default off** — zero behavior change unless
+  you enable them.
+- Burn-in fixes (found by running the cage against itself): the quality officer
+  no longer grades the cage's own files (`.cage_snippet.py`, `NOTES.md`,
+  `.cage/`); the action parser repairs the `\'` JSON-escape quirk local models
+  emit when embedding code; config keys are strict-decoded, so a misspelled
+  toggle errors instead of silently doing nothing.
+- New human-facing docs: `docs/WRITING-A-DOD.md`, `docs/WINDOWS-QUICKSTART.md`.
 
 **v1.3.0** — reasoning-model readiness
 - Backend reads `reasoning_content` + `finish_reason`; truncated thinking

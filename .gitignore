@@ -7,3 +7,5 @@
 .cage/audit.jsonl
 __pycache__/
 *.pyc
+dist/
+cage.exe
