@@ -42,9 +42,9 @@ type Config struct {
 		Temperature    float64 `yaml:"temperature"`    // sampling temp; 0.6 suits Qwen3/thinking models
 	} `yaml:"worker"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
-	PlanningStage struct {
+	MypyStage struct {
 		Enabled bool `yaml:"enabled"`
-	} `yaml:"planning"`
+	} `yaml:"mypy_stage"`
 }
 
 // Defaults returns the built-in configuration: local llama-server backend,
@@ -67,7 +67,7 @@ func Defaults() *Config {
 	c.Worker.AttemptSeconds = 900
 	c.Worker.MaxGenTokens = 8192
 	c.Worker.Temperature = 0.6
-	c.PlanningStage.Enabled = false
+	c.MypyStage.Enabled = false
 	c.CooldownSeconds = 10
 	return c
 }

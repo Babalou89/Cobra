@@ -25,7 +25,7 @@ var planCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if !cfg.PlanningStage.Enabled {
+		if !cfg.MypyStage.Enabled {
 			return fmt.Errorf("planning stage is disabled — set planning.enabled in .cage/config.yaml")
 		}
 
