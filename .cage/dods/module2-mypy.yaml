@@ -1,0 +1,52 @@
+task: "mypy remediation: after done, run mypy, generate a scoped fix-DOD, loop bounded, attach report"
+name: "module2-mypy"
+description: >
+  A toggleable deterministic critic. After a run passes, run mypy on touched
+  files, parse errors, auto-generate a remediation DOD (mypy clean), re-enter
+  plan+execute bounded to N rounds. Constrain writes to flagged files; require
+  the original DOD still passes; forbid new '# type: ignore'; attach the
+  residual mypy report. No human gate, no LLM in the verdict.
+criteria:
+  - name: "builds, vets, tests"
+    verify:
+      - type: command
+        run: "go build ./..."
+        expect_exit: 0
+      - type: command
+        run: "go vet ./..."
+        expect_exit: 0
+      - type: command
+        run: "go test ./..."
+        expect_exit: 0
+  - name: "mypy runner parses errors into structure (tested)"
+    verify:
+      - type: exists
+        file: "internal/critic/mypy.go"
+      - type: grep
+        file: "internal/critic/mypy_test.go"
+        regex: "mypy|ParseErrors|Errors"
+  - name: "generates a remediation DOD from errors (tested)"
+    verify:
+      - type: grep
+        file: "internal/critic/mypy.go"
+        regex: "[Rr]emediat|GenerateDOD|mypy-fix"
+  - name: "bounded loop + attached report (no infinite loop)"
+    verify:
+      - type: grep
+        file: "internal/critic/mypy.go"
+        regex: "[Rr]ound|[Mm]axRounds|[Bb]ound"
+  - name: "constraints: file allowlist + no new type-ignore"
+    verify:
+      - type: grep
+        file: "internal/critic/mypy.go"
+        regex: "allowlist|type: ignore|Allow"
+  - name: "mypy stage is a config-toggleable plugin"
+    verify:
+      - type: grep
+        file: "internal/config/config.go"
+        regex: "[Mm]ypy|[Cc]ritic"
+  - name: "version bumped"
+    verify:
+      - type: command
+        run: "test \"$(cat .ai/VERSION)\" != \"1.3.0\""
+        expect_exit: 0

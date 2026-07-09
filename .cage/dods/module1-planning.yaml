@@ -1,0 +1,43 @@
+task: "Planning stage: cage plan produces an audited plan, and cage run can execute it step-by-step"
+name: "module1-planning"
+description: >
+  A toggleable planning stage. `cage plan` generates a step plan from the DOD,
+  audits coverage deterministically, writes .cage/plan.json. `cage run` with
+  plan mode injects one step at a time. Built as a disable-able plugin.
+criteria:
+  - name: "builds, vets, tests"
+    verify:
+      - type: command
+        run: "go build ./..."
+        expect_exit: 0
+      - type: command
+        run: "go vet ./..."
+        expect_exit: 0
+      - type: command
+        run: "go test ./..."
+        expect_exit: 0
+  - name: "plan package with a tested coverage audit"
+    verify:
+      - type: exists
+        file: "internal/plan/plan.go"
+      - type: grep
+        file: "internal/plan/plan.go"
+        contains: "func CoverageGaps"
+      - type: grep
+        file: "internal/plan/plan_test.go"
+        contains: "CoverageGaps"
+  - name: "cage plan command is wired"
+    verify:
+      - type: command
+        run: "go run . plan --help"
+        expect_exit: 0
+  - name: "planning stage is a config-toggleable plugin"
+    verify:
+      - type: grep
+        file: "internal/config/config.go"
+        regex: "[Pp]lan"
+  - name: "version bumped"
+    verify:
+      - type: command
+        run: "test \"$(cat .ai/VERSION)\" != \"1.3.0\""
+        expect_exit: 0

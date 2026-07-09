@@ -1,0 +1,1 @@
+- [01:07] Start: Add `cage plan` subcommand. Steps: 1) internal/plan/plan.go with Step/Plan types and CoverageGaps. 2) internal/plan/plan_test.go with tests. 3) cmd/plan.go with cobra command, load config/DOD, build Plan, write .cage/plan.json. 4) go build/vet/test pass, `go run . plan --help` exit 0.

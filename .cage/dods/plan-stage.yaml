@@ -1,0 +1,37 @@
+task: "add a `cage plan` command that writes an audited plan.json"
+name: "plan-stage-v1"
+description: "cage plan subcommand + internal/plan package with a deterministic coverage audit and a unit test."
+criteria:
+  - name: "compiles"
+    verify:
+      - type: command
+        run: "go build ./..."
+        expect_exit: 0
+  - name: "vets clean"
+    verify:
+      - type: command
+        run: "go vet ./..."
+        expect_exit: 0
+  - name: "tests pass"
+    verify:
+      - type: command
+        run: "go test ./..."
+        expect_exit: 0
+  - name: "plan command is wired"
+    verify:
+      - type: command
+        run: "go run . plan --help"
+        expect_exit: 0
+  - name: "plan package and command exist"
+    verify:
+      - type: exists
+        file: "cmd/plan.go"
+      - type: exists
+        file: "internal/plan/plan.go"
+  - name: "coverage audit is tested"
+    verify:
+      - type: exists
+        file: "internal/plan/plan_test.go"
+      - type: grep
+        file: "internal/plan/plan_test.go"
+        contains: "CoverageGaps"
