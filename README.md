@@ -69,6 +69,27 @@ models loop), and the per-request HTTP timeout is generous so a slow local
 model (a split 32B at ~20 tok/s can spend minutes on one thinking turn) is
 not severed mid-generation.
 
+## Planner (optional)
+
+The cage can call a second, stronger model between attempts to diagnose
+verify failures and write an actionable PLAN.md. The worker reads it
+next attempt. Inspired by DeepSeek speculative decoding at the agent
+level: small model writes code, large model diagnoses failures.
+
+The planner is never consulted during verification — the cage verdict
+is 100%% deterministic. The planner only reads failures and writes
+advice. Cost: ~$0.007 per failed attempt via Claude Fable 5.
+
+Enable in .cage/config.yaml:
+
+  planner:
+    enabled: true
+    base_url: "https://api.oneprovider.dev"
+    api_key: "sk-..."
+    model: "claude-fable-5"
+
+If the API call fails, the cage runs without it (graceful degradation).
+
 ## The DOD
 
 A DOD is a YAML contract of criteria, each a list of deterministic
@@ -90,6 +111,7 @@ internal/cage/     THE ENFORCER: verify, core checks, DOD, quality, 8 checkers
 internal/jail/     the one jailed workspace — agent writes never leave it
 internal/state/    strikes + failure fingerprint, cooldown, audit, reports
 internal/config/   .cage/config.yaml with embedded defaults
+internal/planner/  optional LLM planner: diagnoses verify failures, writes PLAN.md
 internal/gitx/     the binary's own git view: diffs, version history, commits
 assets/            go:embed defaults for `cage init`
 hooks/             pre-commit / pre-receive one-liners
@@ -177,6 +199,14 @@ need a benchmark fitness function first.
 Run them on any single file with `cage peek <file>`.
 
 ## Changelog
+
+**v1.5.0** — planner (optional)
+- **Planner** (opt-in, planner.enabled): between attempts, a second model
+  reads verify failures + relevant source code and writes PLAN.md with
+  actionable fixes. The worker reads it next attempt. Inspired by DeepSeek
+  speculative decoding applied at the agent level. Uses Anthropic Messages
+  API (OneProvider). Default off — zero behavior change unless enabled.
+  Graceful degradation: if the API call fails, the cage runs without it.
 
 **v1.4.0** — pluggable planning + critic, burn-in hardening
 - **Planning stage** (opt-in, `planning_stage.enabled`): `cage plan` and an
