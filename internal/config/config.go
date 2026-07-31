@@ -45,6 +45,13 @@ type Config struct {
 	PlanningStage struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"planning_stage"`
+	Planner struct {
+		Enabled   bool   `yaml:"enabled"`
+		BaseURL   string `yaml:"base_url"`
+		APIKey    string `yaml:"api_key"`
+		Model     string `yaml:"model"`
+		MaxTokens int    `yaml:"max_tokens"`
+	} `yaml:"planner"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
 	// Critic toggles the mypy post-pass critic on touched .py files.
 	Critic struct {
@@ -73,6 +80,10 @@ func Defaults() *Config {
 	c.Worker.MaxGenTokens = 8192
 	c.Worker.Temperature = 0.6
 	c.PlanningStage.Enabled = false
+	c.Planner.Enabled = false
+	c.Planner.BaseURL = "https://api.oneprovider.dev"
+	c.Planner.Model = "claude-fable-5"
+	c.Planner.MaxTokens = 2000
 	c.Critic.Enabled = false
 	c.CooldownSeconds = 10
 	return c

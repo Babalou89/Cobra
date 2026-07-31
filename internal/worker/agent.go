@@ -37,6 +37,7 @@ type Agent struct {
 	// durable memory, a plain file inside the jail.
 	Ralph     bool
 	NotesPath string
+	PlanPath  string // path to PLAN.md (written by planner between attempts)
 
 	Log     func(format string, args ...any)
 	Trace   func(turn int, tool string, ok bool, summary string)
@@ -187,6 +188,13 @@ func (a *Agent) buildUser(task, dodText, verifyReport string) string {
 			}
 		}
 		sb.WriteString("\nNOTES.md — your only durable memory (conversation resets every turn):\n" + notes + "\n")
+	}
+	if a.PlanPath != "" {
+		plan := "(no plan - planner not run yet)"
+		if data, err := os.ReadFile(a.PlanPath); err == nil && len(data) > 0 {
+			plan = ctxdiet.ClampTo(string(data), 1500)
+		}
+		sb.WriteString("\nPlanner diagnosis - follow this plan:\n" + plan + "\n")
 	}
 	return sb.String()
 }

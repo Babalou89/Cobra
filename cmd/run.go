@@ -18,6 +18,7 @@ import (
 	"cobra/internal/gitx"
 	"cobra/internal/jail"
 	"cobra/internal/plan"
+	"cobra/internal/planner"
 	"cobra/internal/skills"
 	"cobra/internal/state"
 	"cobra/internal/worker"
@@ -216,7 +217,18 @@ var runCmd = &cobra.Command{
 				return nil
 			}
 
-			struck := st.RecordRun(res.Failures)
+	
+		// Planner step -- diagnose failures for the next attempt.
+		if cfg.Planner.Enabled && cfg.Planner.APIKey != "" {
+			plan := planner.Diagnose(cfg, res.Failures, dir)
+			if plan != "" {
+				planPath := filepath.Join(jl.Root, "PLAN.md")
+				_ = os.WriteFile(planPath, []byte(plan), 0o644)
+				agent.PlanPath = planPath
+				fmt.Printf("planner: wrote PLAN.md (%d bytes)\n", len(plan))
+			}
+		}
+		struck := st.RecordRun(res.Failures)
 			_ = st.Save()
 			if struck {
 				fmt.Printf("STRIKE %d/%d — no progress since last attempt\n", st.Strikes, state.MaxStrikes)
