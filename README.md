@@ -153,6 +153,13 @@ Run them on any single file with `cage peek <file>`.
 
 ## Changelog
 
+**v1.7.1** — cage reads files, injects code into directive
+- **Cage reads broken files:**  in directive.go reads files mentioned in verify failures and includes their contents in the fix target. Model gets actual code, not just failure text.
+- **System prompt updated:** WRITE CODE IMMEDIATELY, do not explore. file_write is primary tool.
+- **Tests updated** to match new FixTarget format.
+
+
+
 **v1.7.0** — cage-ralph architecture
 - **Cage directs Ralph:** `internal/cage/directive.go` — `DOD.Direct(attempt, verifyReport)` breaks the DOD into a task for Ralph. The cage is the only thing that knows the DOD and decides when done.
 - **Minimal model context:** `buildUser()` simplified — injects only task + fixTarget + verifyReport, clamped to 200 lines. No more NOTES.md, PLAN.md, or full DOD text in model context. Model sees 5-20 lines per turn.
