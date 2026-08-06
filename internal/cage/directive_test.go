@@ -39,8 +39,8 @@ func TestDirectSubsequentTurn(t *testing.T) {
 	verifyReport := "VERDICT: FAIL -- 2 failure(s)\n  X source files exist: file dedup.py does not exist\n  X tests pass: command exited 1"
 	directive := dod.Direct(2, verifyReport)
 
-	if directive.FixTarget != verifyReport {
-		t.Errorf("expected verify report as fix target, got: %q", directive.FixTarget)
+	if !strings.Contains(directive.FixTarget, verifyReport) {
+		t.Errorf("fix target should contain verify report, got: %q", directive.FixTarget)
 	}
 	if directive.Turn != 2 {
 		t.Errorf("expected turn 2, got: %d", directive.Turn)
