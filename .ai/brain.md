@@ -18,20 +18,30 @@ tree, no venv, no folder sprawl.
 - No external services. State is flat files under `.cage/`. No mem9.
 
 ## Current State
-- Version: 1.2.0 — spine (dead-man, loop abort, ralph mode) + cage watch dashboard
-  every cobra-build.yaml criterion verified locally on babalou
+- Version: 1.5.0 — planner (optional Claude Fable 5 diagnosis between attempts)
 - Spec of record: `COBRA-BUILD.md` (brief) + `cobra-build.yaml` (DOD)
 - Source lineage: clean kimiversonf Hermes Cage v1.0 + cage-monitor + verify.sh,
   minus mem9, minus folder sprawl
+- Build: `go build -o cage .` clean, `go vet` clean
+- Tests: 1 failure in internal/critic (TestBoundedRemediateFiresAndBounds) — active DOD
+- Fine-tuned cage-agent-32B Q5_K_M model ready at /home/billy/models/cage-agent-32b-q5km.gguf
 
 ## Architecture (one line each — full contracts in COBRA-BUILD.md)
 - `internal/backend` — Backend interface + llama_cpp/anthropic/openai; model-agnostic
 - `internal/worker`  — agent loop, jailed tools, neutral prompt; NO commit power
-- `internal/cage`    — verify, core, dod, quality, checkers; the deterministic enforcer
+- `internal/cage`    — verify, core, dod, quality, 8 checkers; the deterministic enforcer
 - `internal/ctxdiet` — token budget + trajectory compression (always on)
 - `internal/jail`    — the one contained workspace
 - `internal/state`   — strikes (no-progress), cooldown, audit, session, report
-- `cmd/`             — init, run, verify, peek, session, gate, strikes
+- `internal/config`  — .cage/config.yaml with embedded defaults
+- `internal/planner` — optional LLM planner: diagnoses verify failures, writes PLAN.md
+- `internal/critic`  — optional mypy post-pass critic (bounded remediation loop)
+- `internal/plan`    — optional planning stage: generates step-plan from DOD via backend
+- `internal/memory`  — optional local JSONL + TF-IDF memory (off by default)
+- `internal/skills`  — gated skill library for cage evolve
+- `internal/evolve`  — trajectory-based skill proposer (the ONLY package importing backend)
+- `internal/gitx`    — the binary's own git view: diffs, version history, commits
+- `cmd/`             — init, run, verify, peek, session, gate, strikes, evolve, skills, watch, plan
 
 ## Decisions Already Made (do not relitigate — see COBRA-BUILD.md §1)
 1. No LLM in verify, ever — the zero-hallucination property
@@ -47,8 +57,10 @@ tree, no venv, no folder sprawl.
 11. Local memory OFF by default (TF-IDF available)
 
 ## What We're Working On RIGHT NOW
-COBRA v1 is built. Next: exercise `cage run` against a real task with the
-llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
+- Fix failing test: internal/critic TestBoundedRemediateFiresAndBounds (active DOD)
+- Fine-tuned cage-agent-32B model ready — test with cage run against the failing test
+- mem9 infrastructure being fixed (embeddings, FTS, semantic search)
+- Cobra components review: planner/critic/planning_stage all wired but disabled by default
 
 ## Session Log
 ### 2026-07-05 — Continual Harness v1 (Claude, babalou)
@@ -92,6 +104,9 @@ llama_cpp backend on babalou, then wire the pre-receive gate on the bare repo.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.5.0   | 2026-07-09 | planner: optional Claude Fable 5 diagnosis between attempts, writes PLAN.md | internal/planner/, cmd/run.go, README.md |
+| 1.4.0   | 2026-07-09 | pluggable planning + mypy critic, burn-in hardening, strict config decode | internal/plan/, internal/critic/, cmd/run.go, cmd/plan.go |
+| 1.3.0   | 2026-07-07 | reasoning-model readiness: reasoning_content, configurable temp, 900s timeout | internal/backend/, internal/worker/, cmd/run.go |
 | 1.2.0   | 2026-07-05 | THE SPINE: dead-man's switch, in-attempt loop abort (3 identical = abort), JSON control-char repair, file_write append, ralph mode default (context reconstructed per turn from task+DOD+NOTES.md), note tool, cage watch dashboard, worker config section; 8 new spine tests | internal/worker/, internal/config/, internal/state/events.go, cmd/watch.go, cmd/run.go, assets/dashboard.html, README.md |
 | 1.1.2   | 2026-07-05 | shell guard: block command position only — dir named sudo/ was uninspectable; guard tests | internal/worker/tools_shell.go, guard_test.go |
 | 1.1.1   | 2026-07-05 | context diet hardened after live overflow (32792>32768 on home-audit run): conservative estimator (len/3), tool-result ceiling (prompt_ceiling/4), shed-until-fits loop, backend overflow recovery, budget auto-capped at 55% of backend MaxContext | internal/ctxdiet/budget.go, internal/worker/agent.go, cmd/run.go |

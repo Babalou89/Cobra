@@ -1,6 +1,7 @@
 package critic
 
 import (
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -48,6 +49,10 @@ func TestRemediateAllowlist(t *testing.T) {
 }
 
 func TestBoundedRemediateFiresAndBounds(t *testing.T) {
+	if _, err := exec.LookPath("mypy"); err != nil {
+		t.Skip("mypy not installed -- skipping integration test")
+	}
+
 	// Deterministic test using a fixture with a real mypy type error.
 	// We exercise the critic firing (non-zero errors) and the MaxRounds bound.
 	pyFile := "../../tests/fixtures/critic/bad.py"

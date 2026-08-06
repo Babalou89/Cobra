@@ -112,6 +112,8 @@ internal/jail/     the one jailed workspace — agent writes never leave it
 internal/state/    strikes + failure fingerprint, cooldown, audit, reports
 internal/config/   .cage/config.yaml with embedded defaults
 internal/planner/  optional LLM planner: diagnoses verify failures, writes PLAN.md
+internal/critic/   optional mypy post-pass critic (bounded remediation loop)
+internal/plan/     optional planning stage: generates step-plan from DOD via backend
 internal/gitx/     the binary's own git view: diffs, version history, commits
 assets/            go:embed defaults for `cage init`
 hooks/             pre-commit / pre-receive one-liners
@@ -199,6 +201,13 @@ need a benchmark fitness function first.
 Run them on any single file with `cage peek <file>`.
 
 ## Changelog
+
+**v1.6.0** — critic fix + verification engine tests
+- **C1 fixed:** `RunMypy()` now checks `exec.LookPath("mypy")` before running. No more silent passes when mypy is missing.
+- **C2 fixed:** `TestBoundedRemediateFiresAndBounds` skips cleanly when mypy is not installed (was the only failing test).
+- **C3 added:** 31 new tests for `internal/cage/` — the verification engine now has real coverage: DOD loading, evaluation, Scrape, RunChecks, language detection, syntax checking, pluggable tools.
+- **Full test suite passes with zero failures** for the first time.
+- Project rebranded to **Cobra** (binary stays `cage`).
 
 **v1.5.0** — planner (optional)
 - **Planner** (opt-in, planner.enabled): between attempts, a second model

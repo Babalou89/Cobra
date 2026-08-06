@@ -28,14 +28,25 @@ type MypyResult struct {
 }
 
 // RunMypy executes mypy on the supplied files and returns parsed errors.
-// It returns an error only if mypy itself cannot be started.
+// It returns an error if mypy is not installed or cannot be started.
 func RunMypy(files []string) (*MypyResult, error) {
 	if len(files) == 0 {
 		return &MypyResult{}, nil
 	}
+	if _, err := exec.LookPath("mypy"); err != nil {
+		return nil, fmt.Errorf("mypy is not installed or not in PATH")
+	}
 	args := append([]string{"--show-column-numbers", "--no-error-summary"}, files...)
 	cmd := exec.Command("mypy", args...)
-	out, _ := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// mypy exited non-zero (likely found errors) — still parse the output
+		// because mypy returns exit 1 when it finds errors, which is expected.
+		// Only treat exit 2+ (internal error) as a hard failure.
+		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() >= 2 {
+			return nil, fmt.Errorf("mypy internal error (exit %d): %s", ee.ExitCode(), string(out))
+		}
+	}
 	return ParseErrors(string(out)), nil
 }
 
