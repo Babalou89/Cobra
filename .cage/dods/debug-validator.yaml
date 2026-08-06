@@ -1,0 +1,78 @@
+task: "fix a broken JSON config validator"
+name: "debug-validator"
+description: >
+  A JSON config validator is provided in broken_validator.py.
+  It has 5 bugs. Fix ALL of them and write tests that prove each fix.
+  The validator must: parse JSON, validate required fields, check types,
+  validate email format, and handle nested objects.
+
+criteria:
+  - name: "broken_validator.py exists and is fixed"
+    verify:
+      - type: exists
+        file: "broken_validator.py"
+      - type: command
+        run: "python3 -m py_compile broken_validator.py"
+        expect_exit: 0
+
+  - name: "test_validator.py exists"
+    verify:
+      - type: exists
+        file: "test_validator.py"
+      - type: command
+        run: "python3 -m py_compile test_validator.py"
+        expect_exit: 0
+
+  - name: "validator has validate function"
+    verify:
+      - type: grep
+        file: "broken_validator.py"
+        regex: "def validate"
+
+  - name: "handles required fields check"
+    verify:
+      - type: grep
+        file: "broken_validator.py"
+        regex: "required|Required|REQUIRED"
+
+  - name: "handles type checking"
+    verify:
+      - type: grep
+        file: "broken_validator.py"
+        regex: "isinstance|type\(|Type|TypeError"
+
+  - name: "validates email format"
+    verify:
+      - type: grep
+        file: "broken_validator.py"
+        regex: "email|@|re\.|regex|pattern"
+
+  - name: "handles nested objects"
+    verify:
+      - type: grep
+        file: "broken_validator.py"
+        regex: "nested|recurse|depth|dict|object"
+
+  - name: "all tests pass"
+    verify:
+      - type: command
+        run: "python3 -m pytest test_validator.py -v --tb=short"
+        expect_exit: 0
+
+  - name: "at least 8 test cases"
+    verify:
+      - type: command
+        run: "test $(python3 -m pytest test_validator.py --co -q 2>&1 | grep 'test' | wc -l) -ge 8"
+        expect_exit: 0
+
+  - name: "no TODO/FIXME/HACK markers remain"
+    verify:
+      - type: command
+        run: "! grep -niE '(TODO|FIXME|HACK|XXX|STUB)' broken_validator.py"
+        expect_exit: 0
+
+  - name: "no pass-only function bodies"
+    verify:
+      - type: command
+        run: "! grep -n '    pass$' broken_validator.py"
+        expect_exit: 0

@@ -1,0 +1,90 @@
+task: "build a concurrent TCP port scanner"
+name: "port-scanner"
+description: >
+  Build a Python CLI that scans TCP ports on a host using asyncio.
+  Must support port ranges, configurable timeout, concurrency limit,
+  and service name resolution. Output as JSON and table format.
+  Scan localhost as the default target.
+
+criteria:
+  - name: "source files exist"
+    verify:
+      - type: exists
+        file: "scanner.py"
+      - type: exists
+        file: "test_scanner.py"
+
+  - name: "both files compile"
+    verify:
+      - type: command
+        run: "python3 -m py_compile scanner.py && python3 -m py_compile test_scanner.py"
+        expect_exit: 0
+
+  - name: "uses asyncio for concurrency"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        contains: "asyncio"
+      - type: grep
+        file: "scanner.py"
+        regex: "async def|await"
+
+  - name: "supports port range input"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        contains: "--port"
+      - type: grep
+        file: "scanner.py"
+        regex: "range|split.*-"
+
+  - name: "configurable timeout"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        contains: "--timeout"
+      - type: grep
+        file: "scanner.py"
+        contains: "timeout"
+
+  - name: "concurrency limit"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        regex: "Semaphore|semaphore|limit|--concurrency"
+
+  - name: "service name resolution"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        regex: "getservbyport|service|SERVICE"
+
+  - name: "JSON output format"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        contains: "json"
+
+  - name: "tests pass"
+    verify:
+      - type: command
+        run: "python3 -m pytest test_scanner.py -v --tb=short"
+        expect_exit: 0
+
+  - name: "scan localhost successfully"
+    verify:
+      - type: command
+        run: "python3 scanner.py --host 127.0.0.1 --port 22 --timeout 1 2>&1"
+        expect_exit: 0
+
+  - name: "no hardcoded secrets"
+    verify:
+      - type: command
+        run: "! grep -iE '(api.?key|secret|password|token).*[:=].*["\x27][A-Za-z0-9]{8,}' scanner.py"
+        expect_exit: 0
+
+  - name: "handles connection refused gracefully"
+    verify:
+      - type: grep
+        file: "scanner.py"
+        regex: "ConnectionRefused|Connection refused|except|error"

@@ -52,7 +52,7 @@ type action struct {
 }
 
 // Run executes one attempt.
-func (a *Agent) Run(task, dodText, verifyReport string) error {
+func (a *Agent) Run(task, dodText, dodPath, verifyReport string) error {
 	if a.MaxTurns <= 0 {
 		a.MaxTurns = 60
 	}
@@ -95,7 +95,7 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 			return fmt.Errorf("dead-man's switch: attempt exceeded %s at turn %d", a.AttemptTimeout, turn)
 		}
 
-		user := a.buildUser(task, dodText, verifyReport)
+		user := a.buildUser(task, dodText, dodPath, verifyReport)
 		msgs := a.buildMessages(system, user, steps)
 		for a.overBudget(msgs) && len(steps) > 2 {
 			steps = steps[2:]
@@ -171,11 +171,15 @@ func (a *Agent) Run(task, dodText, verifyReport string) error {
 
 // buildUser assembles the per-turn user message. In ralph mode this is the
 // whole context reconstruction: everything the model needs, every turn.
-func (a *Agent) buildUser(task, dodText, verifyReport string) string {
+func (a *Agent) buildUser(task, dodText, dodPath, verifyReport string) string {
 	var sb strings.Builder
 	sb.WriteString("Task:\n" + task + "\n")
 	if dodText != "" {
-		sb.WriteString("\nDefinition of done (the external verifier checks exactly this):\n" + dodText + "\n")
+			if dodPath != "" {
+			sb.WriteString("\nDefinition of done (DOD file: " + dodPath + ", the verifier checks exactly this):\n" + dodText + "\n")
+		} else {
+			sb.WriteString("\nDefinition of done (the external verifier checks exactly this):\n" + dodText + "\n")
+		}
 	}
 	if verifyReport != "" {
 		sb.WriteString("\nPrevious verify report — fix every failure listed:\n" + verifyReport + "\n")

@@ -1,0 +1,116 @@
+task: "build a TOML/INI config parser with schema validation and CLI"
+name: "config-parser"
+description: >
+  Build a Python config system that: parses TOML and INI files into a
+  unified dict, validates against a schema (required fields, types, ranges,
+  regex patterns), supports environment variable overrides, has a CLI
+  for checking/validating config files, and includes comprehensive tests
+  covering all edge cases. NO external TOML/INI libraries — implement
+  the parsers from scratch.
+
+criteria:
+  - name: "source files exist"
+    verify:
+      - type: exists
+        file: "config_parser.py"
+      - type: exists
+        file: "test_config_parser.py"
+
+  - name: "both compile"
+    verify:
+      - type: command
+        run: "python3 -m py_compile config_parser.py && python3 -m py_compile test_config_parser.py"
+        expect_exit: 0
+
+  - name: "no external TOML/INI libraries"
+    verify:
+      - type: command
+        run: "! grep -E 'import toml|import configparser|import iniconfig|from toml|from configparser' config_parser.py"
+        expect_exit: 0
+
+  - name: "custom TOML parser"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "(?i)toml|parse_toml"
+
+  - name: "custom INI parser"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "(?i)ini|parse_ini"
+
+  - name: "schema validation"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "schema|Schema|validate|Validate"
+
+  - name: "type checking in schema"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "type|Type|int|str|float|bool"
+
+  - name: "range validation"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "range|min|max|minimum|maximum|between"
+
+  - name: "regex pattern validation"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "pattern|regex|re\.|match|re\.compile"
+
+  - name: "environment variable overrides"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        regex: "os\.environ|os\.getenv|ENV|env.*override"
+
+  - name: "CLI with check/validate subcommands"
+    verify:
+      - type: grep
+        file: "config_parser.py"
+        contains: "argparse"
+      - type: grep
+        file: "config_parser.py"
+        regex: "subparser|add_parser|check|validate"
+
+  - name: "tests pass"
+    verify:
+      - type: command
+        run: "python3 -m pytest test_config_parser.py -v --tb=short"
+        expect_exit: 0
+
+  - name: "at least 15 test cases"
+    verify:
+      - type: command
+        run: "test $(python3 -m pytest test_config_parser.py --co -q 2>&1 | grep 'test' | wc -l) -ge 15"
+        expect_exit: 0
+
+  - name: "tests cover TOML edge cases"
+    verify:
+      - type: grep
+        file: "test_config_parser.py"
+        regex: "toml|TOML"
+
+  - name: "tests cover INI edge cases"
+    verify:
+      - type: grep
+        file: "test_config_parser.py"
+        regex: "ini|INI"
+
+  - name: "tests cover validation failures"
+    verify:
+      - type: grep
+        file: "test_config_parser.py"
+        regex: "invalid|Invalid|error|Error|fail|Fail|raise|ValueError"
+
+  - name: "no placeholder bodies"
+    verify:
+      - type: command
+        run: "! grep -n '    pass$' config_parser.py"
+        expect_exit: 0

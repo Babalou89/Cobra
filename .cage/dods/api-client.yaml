@@ -1,0 +1,87 @@
+task: "build a resilient HTTP API client with retry and circuit breaker"
+name: "api-client"
+description: >
+  Build a Python HTTP client class with: exponential backoff retry,
+  circuit breaker pattern (open/half-open/closed states), configurable
+  timeout, request/response logging, and session reuse. Write comprehensive
+  tests that simulate failures, retries, and circuit state transitions.
+
+criteria:
+  - name: "source files exist"
+    verify:
+      - type: exists
+        file: "api_client.py"
+      - type: exists
+        file: "test_api_client.py"
+
+  - name: "both compile"
+    verify:
+      - type: command
+        run: "python3 -m py_compile api_client.py && python3 -m py_compile test_api_client.py"
+        expect_exit: 0
+
+  - name: "has retry with exponential backoff"
+    verify:
+      - type: grep
+        file: "api_client.py"
+        regex: "retry|backoff|exponential"
+      - type: grep
+        file: "api_client.py"
+        regex: "sleep|time\.sleep|delay"
+
+  - name: "has circuit breaker pattern"
+    verify:
+      - type: grep
+        file: "api_client.py"
+        regex: "(?i)circuit|breaker|open|closed|half.?open"
+
+  - name: "circuit breaker has three states"
+    verify:
+      - type: grep
+        file: "api_client.py"
+        regex: "OPEN|CLOSED|HALF"
+      - type: grep
+        file: "api_client.py"
+        regex: "state|State"
+
+  - name: "configurable timeout"
+    verify:
+      - type: grep
+        file: "api_client.py"
+        contains: "timeout"
+
+  - name: "session reuse"
+    verify:
+      - type: grep
+        file: "api_client.py"
+        regex: "session|Session|requests\.Session|urllib3"
+
+  - name: "request/response logging"
+    verify:
+      - type: grep
+        file: "api_client.py"
+        regex: "logging|log\.|logger"
+
+  - name: "tests pass"
+    verify:
+      - type: command
+        run: "python3 -m pytest test_api_client.py -v --tb=short"
+        expect_exit: 0
+
+  - name: "at least 10 test cases"
+    verify:
+      - type: command
+        run: "test $(python3 -m pytest test_api_client.py --co -q 2>&1 | grep 'test' | wc -l) -ge 10"
+        expect_exit: 0
+
+  - name: "tests simulate failures"
+    verify:
+      - type: grep
+        file: "test_api_client.py"
+        regex: "mock|Mock|patch|side_effect|raise|Error"
+
+  - name: "no placeholder bodies"
+    verify:
+      - type: command
+        run: "! grep -n '    pass$' api_client.py"
+        expect_exit: 0

@@ -1,0 +1,93 @@
+task: "build a file deduplication CLI tool"
+name: "dedup-tool"
+description: >
+  Build a Python CLI tool that scans a directory tree, hashes every file
+  with SHA256, and reports duplicates. Must handle large files efficiently
+  (streaming hash, not loading entire file into memory). Output as JSON
+  and human-readable formats. Full error handling, edge cases, tests.
+
+criteria:
+  - name: "source files exist"
+    verify:
+      - type: exists
+        file: "dedup.py"
+      - type: exists
+        file: "test_dedup.py"
+
+  - name: "dedup.py compiles"
+    verify:
+      - type: command
+        run: "python3 -m py_compile dedup.py"
+        expect_exit: 0
+
+  - name: "test_dedup.py compiles"
+    verify:
+      - type: command
+        run: "python3 -m py_compile test_dedup.py"
+        expect_exit: 0
+
+  - name: "CLI has argparse with --path and --format flags"
+    verify:
+      - type: grep
+        file: "dedup.py"
+        contains: "argparse"
+      - type: grep
+        file: "dedup.py"
+        contains: "--path"
+      - type: grep
+        file: "dedup.py"
+        contains: "--format"
+
+  - name: "uses SHA256 for hashing"
+    verify:
+      - type: grep
+        file: "dedup.py"
+        regex: "(?i)sha256|hashlib"
+
+  - name: "streaming hash (not loading full file)"
+    verify:
+      - type: grep
+        file: "dedup.py"
+        contains: "read"
+      - type: grep
+        file: "dedup.py"
+        regex: "chunk|block|buffer|4096|8192|65536"
+
+  - name: "handles both JSON and human-readable output"
+    verify:
+      - type: grep
+        file: "dedup.py"
+        contains: "json"
+      - type: grep
+        file: "dedup.py"
+        regex: "format|output|print"
+
+  - name: "error handling for permission denied and missing paths"
+    verify:
+      - type: grep
+        file: "dedup.py"
+        regex: "PermissionError|OSError|FileNotFoundError|except"
+
+  - name: "tests pass"
+    verify:
+      - type: command
+        run: "python3 -m pytest test_dedup.py -v --tb=short"
+        expect_exit: 0
+
+  - name: "tests cover at least 5 scenarios"
+    verify:
+      - type: command
+        run: "python3 -m pytest test_dedup.py -v --tb=short 2>&1 | grep -c PASSED"
+        expect_exit: 0
+
+  - name: "no placeholder bodies"
+    verify:
+      - type: command
+        run: "! grep -n 'pass$' dedup.py | grep -v '# '"
+        expect_exit: 0
+
+  - name: "tool runs without crashing"
+    verify:
+      - type: command
+        run: "python3 dedup.py --path /tmp --format json 2>&1 | python3 -m json.tool"
+        expect_exit: 0
