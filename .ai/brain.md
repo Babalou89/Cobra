@@ -18,7 +18,7 @@ tree, no venv, no folder sprawl.
 - No external services. State is flat files under `.cage/`. No mem9.
 
 ## Current State
-- Version: 1.5.0 — planner (optional Claude Fable 5 diagnosis between attempts)
+- Version: 1.7.0 — planner (optional Claude Fable 5 diagnosis between attempts)
 - Spec of record: `COBRA-BUILD.md` (brief) + `cobra-build.yaml` (DOD)
 - Source lineage: clean kimiversonf Hermes Cage v1.0 + cage-monitor + verify.sh,
   minus mem9, minus folder sprawl
@@ -57,10 +57,10 @@ tree, no venv, no folder sprawl.
 11. Local memory OFF by default (TF-IDF available)
 
 ## What We're Working On RIGHT NOW
-- Fix failing test: internal/critic TestBoundedRemediateFiresAndBounds (active DOD)
-- Fine-tuned cage-agent-32B model ready — test with cage run against the failing test
-- mem9 infrastructure being fixed (embeddings, FTS, semantic search)
-- Cobra components review: planner/critic/planning_stage all wired but disabled by default
+- v1.7.0 shipped: cage-ralph architecture (cage directs, ralph guides, model executes)
+- Model context reduced to 5-20 lines per turn (was 200+)
+- First E2E test: Qwen2.5-Coder-32B — 11/12 criteria on first real attempt
+- Next: test with smaller models (14B, gpt-oss-20b)
 
 ## Session Log
 ### 2026-07-05 — Continual Harness v1 (Claude, babalou)
@@ -104,6 +104,8 @@ tree, no venv, no folder sprawl.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.7.0   | 2026-08-06 | cage-ralph architecture: cage directs, ralph guides, model executes. 5-20 line context per turn. | internal/cage/directive.go, internal/worker/agent.go, cmd/run.go |
+| 1.6.0   | 2026-08-06 | critic fix (exec.LookPath guard), 31 verification engine tests, clean test suite | internal/critic/mypy.go, internal/cage/cage_test.go |
 | 1.5.0   | 2026-07-09 | planner: optional Claude Fable 5 diagnosis between attempts, writes PLAN.md | internal/planner/, cmd/run.go, README.md |
 | 1.4.0   | 2026-07-09 | pluggable planning + mypy critic, burn-in hardening, strict config decode | internal/plan/, internal/critic/, cmd/run.go, cmd/plan.go |
 | 1.3.0   | 2026-07-07 | reasoning-model readiness: reasoning_content, configurable temp, 900s timeout | internal/backend/, internal/worker/, cmd/run.go |

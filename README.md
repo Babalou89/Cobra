@@ -8,6 +8,38 @@ scrapes quality off every touched file, and decides done-or-not with
 
 The agent does not decide when work is done. The cage decides.
 
+## Architecture — Cage-Ralph-Model (v1.7.0)
+
+Three layers, each with one job:
+
+```
+Cage (director)    reads DOD, verifies code, decides done, directs Ralph
+Ralph (guide)      translates cage signals into clear instructions for model
+Model (executor)   writes code. Does NOT see DOD. Does NOT decide when done.
+```
+
+**The cage** owns the DOD. It breaks the contract into tasks and tells
+Ralph what to tell the model. When verification fails, the cage tells
+Ralph exactly what's broken. The cage is the only thing that calls DONE.
+
+**Ralph** is the ralph-mode loop. Each turn it reconstructs the model's
+context from scratch: task + fix target + verify report. Context is
+clamped to 200 lines max — oldest drops, newest stays. The model never
+accumulates state.
+
+**The model** executes. It sees 5-20 lines per turn. Turn 1: just the
+task. Turn 2+: task + "fix these failures." No DOD, no NOTES.md, no
+exploration. It writes code because that's all it can do.
+
+```
+Turn 1:  "Task: build a file dedup CLI tool"
+Turn 2+: "Task: build a file dedup CLI tool
+          Fix these failures:
+          VERDICT: FAIL — 2 failure(s)
+            X source files exist: dedup.py does not exist
+            X tests pass: command exited 1"
+```
+
 ## Install
 
 Requires Go 1.21+.
@@ -77,7 +109,7 @@ next attempt. Inspired by DeepSeek speculative decoding at the agent
 level: small model writes code, large model diagnoses failures.
 
 The planner is never consulted during verification — the cage verdict
-is 100%% deterministic. The planner only reads failures and writes
+is 100% deterministic. The planner only reads failures and writes
 advice. Cost: ~$0.007 per failed attempt via Claude Fable 5.
 
 Enable in .cage/config.yaml:
@@ -99,154 +131,56 @@ checks: `exists`, `command` (+ `expect_exit`), `grep` (`contains` /
 optional `tools:` shell out to ruff/pytest/mypy/bandit. A DOD with zero
 criteria is rejected outright — an empty contract gates nothing.
 
-## Architecture
+## Why Small Models Work
 
-```
-cmd/               command surface: init run verify peek session gate strikes
-internal/backend/  model-agnostic HTTP layer (llama_cpp | anthropic | openai)
-internal/worker/   the agent loop + tools (fs/shell/web/sys), neutral prompt
-internal/ctxdiet/  always-on context diet: budgets, compression, retrieval
-internal/memory/   optional local JSONL + TF-IDF memory (off by default)
-internal/cage/     THE ENFORCER: verify, core checks, DOD, quality, 8 checkers
-internal/jail/     the one jailed workspace — agent writes never leave it
-internal/state/    strikes + failure fingerprint, cooldown, audit, reports
-internal/config/   .cage/config.yaml with embedded defaults
-internal/planner/  optional LLM planner: diagnoses verify failures, writes PLAN.md
-internal/critic/   optional mypy post-pass critic (bounded remediation loop)
-internal/plan/     optional planning stage: generates step-plan from DOD via backend
-internal/gitx/     the binary's own git view: diffs, version history, commits
-assets/            go:embed defaults for `cage init`
-hooks/             pre-commit / pre-receive one-liners
-```
+With the cage-ralph architecture, the model's context is 5-20 lines per
+turn. It doesn't need to reason about the DOD or explore the codebase.
+The cage directs, Ralph guides, the model executes.
 
-Structural guarantees, enforced by construction:
+This means speed matters more than intelligence. A 14B model at 50 tok/s
+doing 5 attempts beats a 32B at 22 tok/s doing 2 attempts in the same
+time. The cage catches mistakes — the model just needs to iterate fast.
 
-1. **No LLM in the verification path.** `internal/cage` imports nothing
-   from the backend or worker layers; every checker is parse,
-   string-compare, file-stat, exit-code.
-2. **The binary owns commit authority.** The worker package has no
-   version-control access at all — only the cage commits, and only after
-   verify passes. There is no hook to skip.
-3. **The workspace is jailed.** Every tool path resolves through the
-   jail; escapes are rejected before touching the filesystem. `$HOME`
-   stays untouched.
-4. **brain.md is inspected, never injected.** The cage checks it for
-   existence and length; it never enters the model's context budget.
-5. **Strikes fire on no-progress, not on every failure.** Each verify
-   run's failures hash into a fingerprint; identical fingerprint = the
-   agent is spinning = strike. Three consecutive = lock, human reset only.
-6. **Quality checks skip on unknown languages** — a language without
-   rules passes; the scraper never fabricates a failure.
-
-## The Spine — running unattended
-
-Four controls substitute for a human watching the session:
-
-1. **Dead-man's switch** — every attempt has a wall-clock cap
-   (`worker.attempt_seconds`) and a turn cap (`worker.max_turns`). Breach
-   aborts the attempt; verify and the strike logic still run.
-2. **In-attempt loop detection** — three identical consecutive actions or
-   protocol errors abort the attempt immediately instead of burning the
-   turn budget. Strikes police *between* attempts; this polices *within*.
-3. **Large-payload protocol** — malformed JSON with raw newlines inside
-   strings is repaired deterministically; `file_write` supports
-   `append: true` so big files land in chunks; generation cap is
-   configurable (`worker.max_gen_tokens`).
-4. **Ralph mode** (default, `worker.mode: ralph`) — context is
-   *reconstructed* every turn, never accumulated: task + DOD + last verify
-   report + `NOTES.md` + the last action. The model records durable
-   findings with the `note` tool; `NOTES.md` is its only memory. Context
-   per turn is constant, so it cannot overflow, and nothing important can
-   scroll away. Set `worker.mode: conversational` for the windowed
-   history instead.
-
-Watch it live: `cage watch` serves a self-contained dashboard on
-`:8060` — the model's replies, every dispatched tool with its measured
-result, verify verdicts, context tokens against budget, and strike state,
-all read from the cage's own append-only records.
-
-## Continual Harness — `cage evolve`
-
-The harness learns; the cage decides. Modeled on the Continual Harness
-idea (an LLM refines its own scaffolding from trajectory windows) with one
-inversion: **the refiner proposes, a deterministic gate adopts.**
-
-Every `cage run` logs each dispatched action — tool, measured outcome,
-first line of output — to `.cage/trajectory.jsonl` (dispatch facts, never
-model self-report). An offline `cage evolve` pass then:
-
-1. Reads the trajectory tail, the last verify report, and the strike state
-   — the ground-truth failure signal the cage already measures.
-2. Asks the backend to propose up to `--max` skills, each as bash
-   `run_sh` plus a self-contained offline `test_sh`.
-3. Stages each candidate and runs its test (30s timeout). Test passes →
-   installed to `.cage/skills/<name>/` and committed by the binary. Test
-   fails → discarded and logged. The proposer's claims count for nothing.
-
-Installed skills appear to the worker as one `skill_run` tool. The worker
-can execute skills but cannot write into `.cage/` — the library only grows
-through the gate, so what accrues there is verified capital, not landfill.
-Because skills are plain code + test, they transfer across backends: swap
-the model and the new one inherits everything its predecessors proved.
-
-Prompt and memory evolution are deliberately out of v1 — prompt changes
-need a benchmark fitness function first.
+Models tested with cage-ralph:
+- Qwen2.5-Coder-32B-Instruct-Q5_K_M — 11/12 criteria on first real attempt
+- (more to come)
 
 ## The 8 checks
 
-`synt` syntax · `empt` empty file · `stub` placeholder bodies ·
-`secr` hardcoded secrets · `hold` unfinished-work markers ·
-`impo` unused imports · `dupl` identical-hash files · `stru` structure.
+`syntax` · `empty` · `stub` · `secrets` · `hold` · `imports` · `duplicate` · `structure`.
 
 Run them on any single file with `cage peek <file>`.
 
 ## Changelog
+
+**v1.7.0** — cage-ralph architecture
+- **Cage directs Ralph:** `internal/cage/directive.go` — `DOD.Direct(attempt, verifyReport)` breaks the DOD into a task for Ralph. The cage is the only thing that knows the DOD and decides when done.
+- **Minimal model context:** `buildUser()` simplified — injects only task + fixTarget + verifyReport, clamped to 200 lines. No more NOTES.md, PLAN.md, or full DOD text in model context. Model sees 5-20 lines per turn.
+- **Rolling window:** `ClampContext(content, maxLines)` — oldest context drops, newest stays. Model never accumulates state.
+- **Agent.Run() signature change:** `(task, fixTarget, verifyReport)` — was 4 params, now 3. Model no longer sees DOD.
+- **9 new tests:** directive (5), clamping (3), integration (1). All pass. Full suite clean.
+- **First E2E test:** Qwen2.5-Coder-32B-Instruct — 11/12 criteria on first real attempt, no exploring, 14 file_writes in 14 turns.
 
 **v1.6.0** — critic fix + verification engine tests
 - **C1 fixed:** `RunMypy()` now checks `exec.LookPath("mypy")` before running. No more silent passes when mypy is missing.
 - **C2 fixed:** `TestBoundedRemediateFiresAndBounds` skips cleanly when mypy is not installed (was the only failing test).
 - **C3 added:** 31 new tests for `internal/cage/` — the verification engine now has real coverage: DOD loading, evaluation, Scrape, RunChecks, language detection, syntax checking, pluggable tools.
 - **Full test suite passes with zero failures** for the first time.
-- Project rebranded to **Cobra** (binary stays `cage`).
 
 **v1.5.0** — planner (optional)
-- **Planner** (opt-in, planner.enabled): between attempts, a second model
-  reads verify failures + relevant source code and writes PLAN.md with
-  actionable fixes. The worker reads it next attempt. Inspired by DeepSeek
-  speculative decoding applied at the agent level. Uses Anthropic Messages
-  API (OneProvider). Default off — zero behavior change unless enabled.
-  Graceful degradation: if the API call fails, the cage runs without it.
+- **Planner** (opt-in, planner.enabled): between attempts, a second model reads verify failures + relevant source code and writes PLAN.md with actionable fixes. Inspired by DeepSeek speculative decoding at the agent level. Uses Anthropic Messages API (OneProvider). Default off. Graceful degradation.
 
 **v1.4.0** — pluggable planning + critic, burn-in hardening
-- **Planning stage** (opt-in, `planning_stage.enabled`): `cage plan` and an
-  in-run stage generate a step-plan from the DOD and audit it for coverage —
-  every criterion must be addressed. Gives a model structure to execute against
-  instead of spiral.
-- **mypy critic** (opt-in, `critic.enabled`): a deterministic post-pass stage
-  that runs mypy on touched `.py` files, bounded by max-rounds and scoped by an
-  allowlist. No LLM in the verdict.
-- Both ship as toggleable plugins, **default off** — zero behavior change unless
-  you enable them.
-- Burn-in fixes (found by running the cage against itself): the quality officer
-  no longer grades the cage's own files (`.cage_snippet.py`, `NOTES.md`,
-  `.cage/`); the action parser repairs the `\'` JSON-escape quirk local models
-  emit when embedding code; config keys are strict-decoded, so a misspelled
-  toggle errors instead of silently doing nothing.
-- New human-facing docs: `docs/WRITING-A-DOD.md`, `docs/WINDOWS-QUICKSTART.md`.
+- **Planning stage** (opt-in): `cage plan` and an in-run stage generate a step-plan from the DOD and audit it for coverage.
+- **mypy critic** (opt-in): deterministic post-pass stage that runs mypy on touched `.py` files, bounded by max-rounds.
+- Burn-in fixes: quality officer no longer grades cage's own files; action parser repairs JSON-escape quirk; config keys strict-decoded.
 
 **v1.3.0** — reasoning-model readiness
-- Backend reads `reasoning_content` + `finish_reason`; truncated thinking
-  no longer becomes an empty reply that trips the strike logic.
-- `worker.temperature` is configurable (default `0.6` for Qwen3/thinking).
-- Backend HTTP timeout raised to 900s so slow local 32Bs are not cut off.
-- The jail root defaults to the project root, so the worker's output lands
-  where `verify` and `commit` look; `.cage`/`.git` stay write-protected
-  relative to the jail.
-- The default DOD ships a `ruff` lint criterion (skips gracefully if ruff
-  is absent); `mypy` is a commented, opt-in criterion.
+- Backend reads `reasoning_content` + `finish_reason`.
+- `worker.temperature` configurable. Backend HTTP timeout 900s.
+- Jail root defaults to project root.
 
-**v1.2.0** — THE SPINE: dead-man's switch, in-attempt loop abort, ralph
-mode, `cage watch` dashboard.
+**v1.2.0** — THE SPINE: dead-man's switch, in-attempt loop abort, ralph mode, `cage watch` dashboard.
 
 ## Versioning
 

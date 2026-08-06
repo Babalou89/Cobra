@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -52,7 +51,7 @@ type action struct {
 }
 
 // Run executes one attempt.
-func (a *Agent) Run(task, dodText, dodPath, verifyReport string) error {
+func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 	if a.MaxTurns <= 0 {
 		a.MaxTurns = 60
 	}
@@ -95,7 +94,7 @@ func (a *Agent) Run(task, dodText, dodPath, verifyReport string) error {
 			return fmt.Errorf("dead-man's switch: attempt exceeded %s at turn %d", a.AttemptTimeout, turn)
 		}
 
-		user := a.buildUser(task, dodText, dodPath, verifyReport)
+		user := a.buildUser(task, fixTarget, verifyReport)
 		msgs := a.buildMessages(system, user, steps)
 		for a.overBudget(msgs) && len(steps) > 2 {
 			steps = steps[2:]
@@ -171,37 +170,25 @@ func (a *Agent) Run(task, dodText, dodPath, verifyReport string) error {
 
 // buildUser assembles the per-turn user message. In ralph mode this is the
 // whole context reconstruction: everything the model needs, every turn.
-func (a *Agent) buildUser(task, dodText, dodPath, verifyReport string) string {
+func (a *Agent) buildUser(task, fixTarget, verifyReport string) string {
 	var sb strings.Builder
 	sb.WriteString("Task:\n" + task + "\n")
-	if dodText != "" {
-			if dodPath != "" {
-			sb.WriteString("\nDefinition of done (DOD file: " + dodPath + ", the verifier checks exactly this):\n" + dodText + "\n")
-		} else {
-			sb.WriteString("\nDefinition of done (the external verifier checks exactly this):\n" + dodText + "\n")
-		}
+	if fixTarget != "" {
+		sb.WriteString("\nFix these failures:\n" + fixTarget + "\n")
 	}
-	if verifyReport != "" {
-		sb.WriteString("\nPrevious verify report — fix every failure listed:\n" + verifyReport + "\n")
+	if verifyReport != "" && verifyReport != fixTarget {
+		sb.WriteString("\nVerify report:\n" + verifyReport + "\n")
 	}
-	if a.Ralph {
-		notes := "(empty — you have recorded nothing yet)"
-		if a.NotesPath != "" {
-			if data, err := os.ReadFile(a.NotesPath); err == nil && len(data) > 0 {
-				notes = ctxdiet.ClampTo(string(data), 1500)
-			}
-		}
-		sb.WriteString("\nNOTES.md — your only durable memory (conversation resets every turn):\n" + notes + "\n")
+	result := sb.String()
+	lines := strings.Split(result, "\n")
+	if len(lines) > 200 {
+		lines = lines[len(lines)-200:]
+		result = strings.Join(lines, "\n")
 	}
-	if a.PlanPath != "" {
-		plan := "(no plan - planner not run yet)"
-		if data, err := os.ReadFile(a.PlanPath); err == nil && len(data) > 0 {
-			plan = ctxdiet.ClampTo(string(data), 1500)
-		}
-		sb.WriteString("\nPlanner diagnosis - follow this plan:\n" + plan + "\n")
-	}
-	return sb.String()
+	return result
 }
+
+
 
 // trim bounds the carried history: ralph mode keeps only the last
 // exchange pair, conversational mode keeps a compressed window.

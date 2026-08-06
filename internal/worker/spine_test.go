@@ -1,8 +1,6 @@
 package worker
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -59,7 +57,7 @@ func TestRepairJSONLeavesValidAlone(t *testing.T) {
 func TestLoopAbortsRepeatedProtocolErrors(t *testing.T) {
 	fb := &fakeBackend{replies: []string{"I think I should look around first."}}
 	a := &Agent{Backend: fb, Tools: stubRegistry(), Budget: ctxdiet.Budget{MaxTokens: 20000, PromptCeiling: 4000}, MaxTurns: 50}
-	err := a.Run("task", "", "", "")
+	err := a.Run("task", "", "")
 	if err == nil || !strings.Contains(err.Error(), "loop detected") {
 		t.Fatalf("want loop abort, got: %v", err)
 	}
@@ -71,7 +69,7 @@ func TestLoopAbortsRepeatedProtocolErrors(t *testing.T) {
 func TestLoopAbortsRepeatedIdenticalAction(t *testing.T) {
 	fb := &fakeBackend{replies: []string{`{"tool":"ping","args":{"x":1}}`}}
 	a := &Agent{Backend: fb, Tools: stubRegistry(), Budget: ctxdiet.Budget{MaxTokens: 20000, PromptCeiling: 4000}, MaxTurns: 50}
-	err := a.Run("task", "", "", "")
+	err := a.Run("task", "", "")
 	if err == nil || !strings.Contains(err.Error(), "loop detected") {
 		t.Fatalf("want loop abort, got: %v", err)
 	}
@@ -85,7 +83,7 @@ func TestLoopAllowsVariedActions(t *testing.T) {
 		`{"done":true,"summary":"finished"}`,
 	}}
 	a := &Agent{Backend: fb, Tools: stubRegistry(), Budget: ctxdiet.Budget{MaxTokens: 20000, PromptCeiling: 4000}, MaxTurns: 10}
-	if err := a.Run("task", "", "", ""); err != nil {
+	if err := a.Run("task", "", ""); err != nil {
 		t.Fatalf("varied actions must not trip the detector: %v", err)
 	}
 }
@@ -99,21 +97,16 @@ func TestDeadMansSwitch(t *testing.T) {
 	}}
 	a := &Agent{Backend: fb, Tools: stubRegistry(), Budget: ctxdiet.Budget{MaxTokens: 20000, PromptCeiling: 4000},
 		MaxTurns: 1000, AttemptTimeout: 1 * time.Nanosecond}
-	err := a.Run("task", "", "", "")
+	err := a.Run("task", "", "")
 	if err == nil || !strings.Contains(err.Error(), "dead-man") {
 		t.Fatalf("want dead-man abort, got: %v", err)
 	}
 }
 
-func TestRalphPromptCarriesNotesAndResets(t *testing.T) {
-	dir := t.TempDir()
-	notes := filepath.Join(dir, "NOTES.md")
-	if err := os.WriteFile(notes, []byte("- [12:00] surveyed 10 dirs\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	a := &Agent{Ralph: true, NotesPath: notes, Budget: ctxdiet.Budget{MaxTokens: 20000, PromptCeiling: 4000}}
-	user := a.buildUser("the task", "the dod", "", "the report")
-	for _, want := range []string{"the task", "the dod", "the report", "surveyed 10 dirs", "durable memory"} {
+func TestRalphPromptCarriesTaskAndFixTarget(t *testing.T) {
+	a := &Agent{Ralph: true, Budget: ctxdiet.Budget{MaxTokens: 20000, PromptCeiling: 4000}}
+	user := a.buildUser("the task", "the fix target", "the report")
+	for _, want := range []string{"the task", "the fix target", "the report"} {
 		if !strings.Contains(user, want) {
 			t.Errorf("ralph prompt missing %q", want)
 		}
@@ -146,7 +139,7 @@ func TestRalphContextStaysConstant(t *testing.T) {
 				sizes = append(sizes, fields["ctx_tokens"].(int))
 			}
 		}}
-	if err := a.Run("task", "dod", "", ""); err != nil {
+	if err := a.Run("task", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if len(sizes) < 20 {

@@ -156,7 +156,8 @@ var runCmd = &cobra.Command{
 			fmt.Printf("attempt %d\n", attempt)
 			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "attempt started: " + firstLineOf(task)})
 			_ = state.TouchCooldown(state.CooldownPath(dir))
-			if err := agent.Run(task, string(dodText), dodPath, report); err != nil {
+			directive := dod.Direct(attempt, report)
+			if err := agent.Run(directive.Task, directive.FixTarget, report); err != nil {
 				fmt.Fprintf(os.Stderr, "worker error: %v\n", err)
 				_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "worker error: " + err.Error()})
 			}
