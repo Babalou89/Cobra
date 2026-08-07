@@ -30,10 +30,9 @@ func protectedWrite(root, abs string) error {
 	return nil
 }
 
-// registerFS wires file tools. Every path is forced through the jail —
-// nothing the model names can land outside it.
-func registerFS(r *Registry, w *jail.Workspace) {
-	r.Register(&Tool{
+// fileReadTool returns the file_read tool definition.
+func fileReadTool(w *jail.Workspace) *Tool {
+	return &Tool{
 		Name:  "file_read",
 		Usage: `{"path": "relative/path"}`,
 		Desc:  "read a file inside the workspace",
@@ -48,8 +47,12 @@ func registerFS(r *Registry, w *jail.Workspace) {
 			}
 			return ToolResult{OK: true, Output: clip(string(data), 8000)}
 		},
-	})
-	r.Register(&Tool{
+	}
+}
+
+// fileWriteTool returns the file_write tool definition.
+func fileWriteTool(w *jail.Workspace) *Tool {
+	return &Tool{
 		Name:  "file_write",
 		Usage: `{"path": "relative/path", "content": "...", "append": false}`,
 		Desc:  "write a file inside the workspace; set append:true to add a chunk to an existing file (use for large files)",
@@ -85,7 +88,13 @@ func registerFS(r *Registry, w *jail.Workspace) {
 			}
 			return ToolResult{OK: true, Output: fmt.Sprintf("wrote %d bytes to %s", len(content), abs)}
 		},
-	})
+	}
+}
+
+// registerFS wires the full file toolset (file_read, file_write, file_edit, list_dir).
+func registerFS(r *Registry, w *jail.Workspace) {
+	r.Register(fileReadTool(w))
+	r.Register(fileWriteTool(w))
 	r.Register(&Tool{
 		Name:  "file_edit",
 		Usage: `{"path": "relative/path", "old": "...", "new": "..."}`,
@@ -145,4 +154,12 @@ func registerFS(r *Registry, w *jail.Workspace) {
 			return ToolResult{OK: true, Output: clip(sb.String(), 4000)}
 		},
 	})
+}
+
+// registerFSReadWrite wires only file_read and file_write — no file_edit,
+// no list_dir. Used by RalphRegistry for ralph mode where the model should
+// write complete files, not edit them, and shouldn't explore directories.
+func registerFSReadWrite(r *Registry, w *jail.Workspace) {
+	r.Register(fileReadTool(w))
+	r.Register(fileWriteTool(w))
 }

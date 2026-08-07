@@ -27,7 +27,7 @@ import (
 var runDOD string
 
 var runCmd = &cobra.Command{
-	Use:   "run \"<task>\"",
+	Use:   `run "<task>"`,
 	Short: "drive the worker through the jail until verify passes or strikes lock",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -104,16 +104,28 @@ var runCmd = &cobra.Command{
 		if cfg.Budget.MaxTokens > budgetCap {
 			cfg.Budget.MaxTokens = budgetCap
 		}
+
+		// Choose tool registry based on mode. Ralph mode gets a minimal
+		// 4-tool set (file_read, file_write, note, code_execute) to prevent
+		// the model from exploring instead of coding.
+		isRalph := cfg.Worker.Mode != "conversational"
+		var tools *worker.Registry
+		if isRalph {
+			tools = worker.RalphRegistry(jl)
+		} else {
+			tools = worker.DefaultRegistry(jl, skills.Root(dir))
+		}
+
 		currentAttempt := 1
 		agent := &worker.Agent{
 			Backend:        be,
-			Tools:          worker.DefaultRegistry(jl, skills.Root(dir)),
+			Tools:          tools,
 			Budget:         ctxdiet.Budget{MaxTokens: cfg.Budget.MaxTokens, PromptCeiling: cfg.Budget.PromptCeiling},
 			MaxTurns:       cfg.Worker.MaxTurns,
 			AttemptTimeout: time.Duration(cfg.Worker.AttemptSeconds) * time.Second,
 			MaxGenTokens:   cfg.Worker.MaxGenTokens,
 			Temperature:    cfg.Worker.Temperature,
-			Ralph:          cfg.Worker.Mode != "conversational",
+			Ralph:          isRalph,
 			NotesPath:      filepath.Join(jl.Root, "NOTES.md"),
 			Log: func(format string, a ...any) {
 				fmt.Printf("  "+format+"\n", a...)
@@ -157,6 +169,14 @@ var runCmd = &cobra.Command{
 			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "attempt started: " + firstLineOf(task)})
 			_ = state.TouchCooldown(state.CooldownPath(dir))
 			directive := dod.Direct(attempt, report)
+
+			// Inject planner summary from PLAN.md if it exists.
+			// The planner writes PLAN.md between attempts — inject it
+			// so the model has the diagnosis alongside the failures.
+			if planSummary := cage.InjectPlanner(jl.Root); planSummary != "" {
+				directive.FixTarget += planSummary
+			}
+
 			if err := agent.Run(directive.Task, directive.FixTarget, report); err != nil {
 				fmt.Fprintf(os.Stderr, "worker error: %v\n", err)
 				_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "worker error: " + err.Error()})
@@ -218,18 +238,17 @@ var runCmd = &cobra.Command{
 				return nil
 			}
 
-	
-		// Planner step -- diagnose failures for the next attempt.
-		if cfg.Planner.Enabled && cfg.Planner.APIKey != "" {
-			plan := planner.Diagnose(cfg, res.Failures, dir)
-			if plan != "" {
-				planPath := filepath.Join(jl.Root, "PLAN.md")
-				_ = os.WriteFile(planPath, []byte(plan), 0o644)
-				agent.PlanPath = planPath
-				fmt.Printf("planner: wrote PLAN.md (%d bytes)\n", len(plan))
+			// Planner step — diagnose failures for the next attempt.
+			if cfg.Planner.Enabled && cfg.Planner.APIKey != "" {
+				planResult := planner.Diagnose(cfg, res.Failures, dir)
+				if planResult != "" {
+					planPath := filepath.Join(jl.Root, "PLAN.md")
+					_ = os.WriteFile(planPath, []byte(planResult), 0o644)
+					agent.PlanPath = planPath
+					fmt.Printf("planner: wrote PLAN.md (%d bytes)\n", len(planResult))
+				}
 			}
-		}
-		struck := st.RecordRun(res.Failures)
+			struck := st.RecordRun(res.Failures)
 			_ = st.Save()
 			if struck {
 				fmt.Printf("STRIKE %d/%d — no progress since last attempt\n", st.Strikes, state.MaxStrikes)

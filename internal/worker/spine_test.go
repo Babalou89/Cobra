@@ -116,8 +116,8 @@ func TestRalphPromptCarriesTaskAndFixTarget(t *testing.T) {
 		{Role: "assistant", Content: "2"}, {Role: "tool", Content: "2"},
 		{Role: "assistant", Content: "3"}, {Role: "tool", Content: "3"}}
 	trimmed := a.trim(steps)
-	if len(trimmed) != 2 || trimmed[1].Content != "3" {
-		t.Fatalf("ralph trim wrong: %+v", trimmed)
+	if len(trimmed) != 6 || trimmed[5].Content != "3" {
+		t.Fatalf("ralph trim wrong (want 6 steps): %+v", trimmed)
 	}
 }
 

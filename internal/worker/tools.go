@@ -1,7 +1,3 @@
-// Package worker is the agent loop ported to Go, folded into the binary.
-// It drives an external model through tools inside the jailed workspace.
-// It has no version-control access of any kind: repository writes belong
-// exclusively to the cage side of the binary.
 package worker
 
 import (
@@ -57,6 +53,12 @@ func (r *Registry) Dispatch(name string, args map[string]any) ToolResult {
 	return t.Fn(args)
 }
 
+// Has returns true if the named tool is registered.
+func (r *Registry) Has(name string) bool {
+	_, ok := r.tools[name]
+	return ok
+}
+
 // Describe renders the tool list for the system prompt.
 func (r *Registry) Describe() string {
 	var sb strings.Builder
@@ -89,6 +91,20 @@ func DefaultRegistry(w *jail.Workspace, skillsRoot string) *Registry {
 	if skillsRoot != "" {
 		registerSkills(r, w, skillsRoot)
 	}
+	return r
+}
+
+// RalphRegistry returns the minimal toolset for ralph mode: file_read,
+// file_write, note, code_execute. No exploratory tools (list_dir, web_*,
+// system_info, skill_run, file_edit). The cage injects file contents into
+// FixTarget so the model doesn't need to explore. file_read stays because
+// the model may need files the cage didn't inject. code_execute covers
+// both shell and inline code execution.
+func RalphRegistry(w *jail.Workspace) *Registry {
+	r := NewRegistry()
+	registerFSReadWrite(r, w)
+	registerShellExecute(r, w)
+	registerNote(r, w)
 	return r
 }
 

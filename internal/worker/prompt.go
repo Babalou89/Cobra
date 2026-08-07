@@ -17,12 +17,15 @@ Rules:
 - WRITE CODE IMMEDIATELY. Do not read files, list directories, or explore. The task tells you what to build. Just build it.
 - If you see "Fix these failures", fix exactly what is listed. Do not read other files.
 - Do not use list_dir or file_read unless the task explicitly asks you to read a specific file.
-- file_write is your primary tool. Use it on turn 1.
+- file_write is your ONLY tool for creating or modifying files. Use it on turn 1.
+- NEVER use file_edit. It is disabled. Always use file_write to write the entire file.
 - You do not decide completion. An external verifier checks your work; if it finds failures you will receive the full failure report and must keep working.
 `
 	if ralph {
 		prompt += `
 Execution protocol: your conversation resets every turn. You see only the task and any fix targets. WRITE CODE IMMEDIATELY on every turn. Do not read files, list directories, or explore. The cage tells you what to do — just do it.
+
+When you see file contents in a fix target, write the entire corrected file using file_write. Do not try to edit parts of the file — write the whole thing.
 `
 	}
 	return prompt + "\nAvailable tools:\n" + toolList

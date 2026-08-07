@@ -17,6 +17,16 @@ import (
 // system watches between attempts; this watches within one.
 const maxRepeat = 3
 
+// slidingWindowSize is how many recent actions the loop detector examines.
+// Instead of only catching N consecutive identical actions, we now look at
+// the last slidingWindowSize actions and check for stuck patterns (e.g.
+// alternating file_read on different files).
+const slidingWindowSize = 6
+
+// fileReadThreshold is the max number of file_read calls allowed in the
+// sliding window before we declare the model stuck.
+const fileReadThreshold = 4
+
 // Agent drives one backend through the tool registry until the model
 // signals done, the dead-man's switch fires, or the loop detector trips.
 // It cannot verify and it cannot touch the repository — both live on the
@@ -89,6 +99,10 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 		return repeatCount >= maxRepeat
 	}
 
+	// Sliding window of recent tool names for stuck-pattern detection.
+	recentTools := make([]string, 0, slidingWindowSize)
+	fileReadCount := 0
+
 	for turn := 1; turn <= a.MaxTurns; turn++ {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("dead-man's switch: attempt exceeded %s at turn %d", a.AttemptTimeout, turn)
@@ -148,6 +162,44 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 			return fmt.Errorf("loop detected: %s called %d times in a row with identical arguments — aborting attempt", act.Tool, repeatCount)
 		}
 
+		// --- Stuck-pattern detection: sliding window of recent tools ---
+		recentTools = append(recentTools, act.Tool)
+		if len(recentTools) > slidingWindowSize {
+			recentTools = recentTools[1:]
+		}
+		// Count file_read in the sliding window.
+		readCount := 0
+		for _, t := range recentTools {
+			if t == "file_read" {
+				readCount++
+			}
+		}
+		if readCount >= fileReadThreshold {
+			return fmt.Errorf("loop detected: %d file_read calls in last %d actions — model is stuck reading instead of writing; aborting attempt", readCount, slidingWindowSize)
+		}
+
+		// --- Hard cap on total file_read calls per attempt ---
+		if act.Tool == "file_read" {
+			fileReadCount++
+			readCap := a.MaxTurns / 3
+			if readCap < 3 {
+				readCap = 3
+			}
+			if fileReadCount > readCap {
+				return fmt.Errorf("file_read cap exceeded: %d reads used (cap %d of %d max turns) — stop reading, use file_write", fileReadCount, readCap, a.MaxTurns)
+			}
+		}
+
+		// --- Ban file_edit in ralph mode: Qwen can't match exact strings ---
+		if a.Ralph && act.Tool == "file_edit" {
+			observe("result", map[string]any{"turn": turn, "tool": "file_edit", "ok": false, "text": "file_edit disabled in ralph mode — use file_write instead"})
+			steps = append(steps,
+				ctxdiet.Step{Role: "assistant", Content: a.Budget.ClampMessage(reply)},
+				ctxdiet.Step{Role: "tool", Content: "[file_edit BLOCKED] file_edit is disabled in ralph mode. Use file_write to write the entire file. Do not try to match exact strings — just write the complete file with your changes."})
+			steps = a.trim(steps)
+			continue
+		}
+
 		observe("action", map[string]any{"turn": turn, "tool": act.Tool, "text": firstChars(compactArgs(act.Args), 200)})
 		result := a.Tools.Dispatch(act.Tool, act.Args)
 		status := "ok"
@@ -188,14 +240,13 @@ func (a *Agent) buildUser(task, fixTarget, verifyReport string) string {
 	return result
 }
 
-
-
-// trim bounds the carried history: ralph mode keeps only the last
-// exchange pair, conversational mode keeps a compressed window.
+// trim bounds the carried history: ralph mode keeps the last 4 exchange
+// pairs (enough to see read patterns), conversational mode keeps a
+// compressed window.
 func (a *Agent) trim(steps []ctxdiet.Step) []ctxdiet.Step {
 	if a.Ralph {
-		if len(steps) > 2 {
-			return steps[len(steps)-2:]
+		if len(steps) > 8 {
+			return steps[len(steps)-8:]
 		}
 		return steps
 	}

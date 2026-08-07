@@ -41,28 +41,29 @@ func guard(command string) error {
 	return nil
 }
 
+// runInJail executes a command in the workspace with a timeout and guard.
+func runInJail(w *jail.Workspace, command string, timeout time.Duration) ToolResult {
+	if err := guard(command); err != nil {
+		return ToolResult{OK: false, Output: err.Error()}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+	cmd.Dir = w.Root
+	out, err := cmd.CombinedOutput()
+	result := clip(string(out), 4000)
+	if ctx.Err() == context.DeadlineExceeded {
+		return ToolResult{OK: false, Output: result + "\n[command timed out]"}
+	}
+	if err != nil {
+		return ToolResult{OK: false, Output: result + "\n[exit error: " + err.Error() + "]"}
+	}
+	return ToolResult{OK: true, Output: result}
+}
+
 // registerShell wires shell execution, cwd pinned to the jail root with a
 // hard timeout and a blocked-command guard.
 func registerShell(r *Registry, w *jail.Workspace) {
-	runInJail := func(command string, timeout time.Duration) ToolResult {
-		if err := guard(command); err != nil {
-			return ToolResult{OK: false, Output: err.Error()}
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-		cmd := exec.CommandContext(ctx, "bash", "-c", command)
-		cmd.Dir = w.Root
-		out, err := cmd.CombinedOutput()
-		result := clip(string(out), 4000)
-		if ctx.Err() == context.DeadlineExceeded {
-			return ToolResult{OK: false, Output: result + "\n[command timed out]"}
-		}
-		if err != nil {
-			return ToolResult{OK: false, Output: result + "\n[exit error: " + err.Error() + "]"}
-		}
-		return ToolResult{OK: true, Output: result}
-	}
-
 	r.Register(&Tool{
 		Name:  "shell",
 		Usage: `{"command": "ls -la"}`,
@@ -72,7 +73,7 @@ func registerShell(r *Registry, w *jail.Workspace) {
 			if strings.TrimSpace(command) == "" {
 				return ToolResult{OK: false, Output: "command must not be empty"}
 			}
-			return runInJail(command, 60*time.Second)
+			return runInJail(w, command, 60*time.Second)
 		},
 	})
 	r.Register(&Tool{
@@ -88,9 +89,35 @@ func registerShell(r *Registry, w *jail.Workspace) {
 				if err != nil {
 					return ToolResult{OK: false, Output: err.Error()}
 				}
-				return runInJail("python3 "+abs, 60*time.Second)
+				return runInJail(w, "python3 "+abs, 60*time.Second)
 			case "bash", "sh":
-				return runInJail(code, 60*time.Second)
+				return runInJail(w, code, 60*time.Second)
+			default:
+				return ToolResult{OK: false, Output: "unsupported language " + lang + " (python|bash)"}
+			}
+		},
+	})
+}
+
+// registerShellExecute wires only code_execute for ralph mode. The model
+// can run tests and compile checks but doesn't get raw shell access.
+func registerShellExecute(r *Registry, w *jail.Workspace) {
+	r.Register(&Tool{
+		Name:  "code_execute",
+		Usage: `{"language": "python", "code": "print(1)"}`,
+		Desc:  "execute a code snippet inside the workspace (python or bash)",
+		Fn: func(args map[string]any) ToolResult {
+			lang := argString(args, "language", "python")
+			code := argString(args, "code", "")
+			switch lang {
+			case "python", "python3":
+				abs, err := w.WriteFile(".cage_snippet.py", []byte(code))
+				if err != nil {
+					return ToolResult{OK: false, Output: err.Error()}
+				}
+				return runInJail(w, "python3 "+abs, 60*time.Second)
+			case "bash", "sh":
+				return runInJail(w, code, 60*time.Second)
 			default:
 				return ToolResult{OK: false, Output: "unsupported language " + lang + " (python|bash)"}
 			}

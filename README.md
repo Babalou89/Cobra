@@ -15,7 +15,7 @@ Three layers, each with one job:
 ```
 Cage (director)    reads DOD, verifies code, decides done, directs Ralph
 Ralph (guide)      translates cage signals into clear instructions for model
-Model (executor)   writes code. Does NOT see DOD. Does NOT decide when done.
+Model (executor)   writes code. Sees DOD criteria checklist. Does NOT decide when done.
 ```
 
 **The cage** owns the DOD. It breaks the contract into tasks and tells
