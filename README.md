@@ -153,6 +153,12 @@ Run them on any single file with `cage peek <file>`.
 
 ## Changelog
 
+**v1.8.1** — build-breaker fix + loop-guard regression revert
+- **Fixed:** `cmd/run.go` called `ensureProjectMeta(dir)`, a function that didn't exist anywhere in the codebase — `go build` was broken on `main`. Implemented it (creates `.ai/brain.md` / `.ai/VERSION` from embedded templates if missing, same pattern as `cage init`, never clobbers existing files).
+- **Reverted:** `maxRepeat` (in-attempt exact-repeat loop guard) had been doubled from 3 to 6 in an uncommitted edit, weakening the v1.8.0 defense hardening with no evidence in logs to justify it. Restored to 3.
+- **Added, left in:** an XML `<function=...>` tool-call fallback parser in `parseAction()`, with tests. Verified against the live model's actual Jinja chat template — it only emits `<tool_call>{json}</tool_call>` when the request includes an OpenAI `tools` schema, which cage never sends. Harmless, not exercised by the current pipeline.
+- **Verified:** `go build`/`vet`/`test ./...` all clean (98 tests, 17 packages). Live production-style run against `dedup-tool.yaml` (the DOD that locked the cage on 2026-08-06) on Qwen2.5-Coder-32B-Instruct via llama.cpp: failures dropped 16→3→2→2 across attempts, no repeat of the catastrophic file_read loop. Run was still iterating when the test harness's 20-minute cap ended it — no regression, no lockup.
+
 **v1.7.1** — cage reads files, injects code into directive
 - **Cage reads broken files:**  in directive.go reads files mentioned in verify failures and includes their contents in the fix target. Model gets actual code, not just failure text.
 - **System prompt updated:** WRITE CODE IMMEDIATELY, do not explore. file_write is primary tool.

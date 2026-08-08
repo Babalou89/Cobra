@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -364,43 +365,66 @@ func repairJSON(raw []byte) []byte {
 	return out
 }
 
-// parseAction extracts the first JSON object from a model reply,
-// tolerating prose or code fences around it, flattened args, and raw
-// control characters inside string values.
+// xmlToolCallRe matches Qwen XML tool-call format.
+var xmlToolCallRe = regexp.MustCompile(`(?s)<function=([^>]+)>\s*(.*?)\s*</function>`)
+var xmlParamRe = regexp.MustCompile(`(?s)<parameter=([^>]+)>(.*?)</parameter>`)
+
+// parseXMLAction extracts a tool call from Qwen XML format.
+func parseXMLAction(reply string) (*action, error) {
+	match := xmlToolCallRe.FindStringSubmatch(reply)
+	if match == nil {
+		return nil, fmt.Errorf("no XML tool call found")
+	}
+	toolName := strings.TrimSpace(match[1])
+	paramsBlock := match[2]
+	args := make(map[string]any)
+	paramMatches := xmlParamRe.FindAllStringSubmatch(paramsBlock, -1)
+	for _, pm := range paramMatches {
+		if len(pm) >= 3 {
+			args[strings.TrimSpace(pm[1])] = strings.TrimSpace(pm[2])
+		}
+	}
+	return &action{Tool: toolName, Args: args}, nil
+}
+
 func parseAction(reply string) (*action, error) {
+	// Try JSON first
 	start := strings.IndexByte(reply, '{')
-	if start < 0 {
-		return nil, fmt.Errorf("no JSON object found")
-	}
-	depth := 0
-	inString := false
-	escaped := false
-	for i := start; i < len(reply); i++ {
-		c := reply[i]
-		if inString {
-			switch {
-			case escaped:
-				escaped = false
-			case c == '\\':
-				escaped = true
-			case c == '"':
-				inString = false
+	if start >= 0 {
+		depth := 0
+		inString := false
+		escaped := false
+		for i := start; i < len(reply); i++ {
+			c := reply[i]
+			if inString {
+				switch {
+				case escaped:
+					escaped = false
+				case c == '\\':
+					escaped = true
+				case c == '"':
+					inString = false
+				}
+				continue
 			}
-			continue
-		}
-		switch c {
-		case '"':
-			inString = true
-		case '{':
-			depth++
-		case '}':
-			depth--
-			if depth == 0 {
-				return decodeAction([]byte(reply[start : i+1]))
+			switch c {
+			case '"':
+				inString = true
+			case '{':
+				depth++
+			case '}':
+				depth--
+				if depth == 0 {
+					return decodeAction([]byte(reply[start : i+1]))
+				}
 			}
 		}
 	}
-	return nil, fmt.Errorf("unterminated JSON object — if writing a large file, use file_write with \"append\": true and smaller chunks")
+	// Fallback: try XML tool-call format (Qwen native)
+	if act, err := parseXMLAction(reply); err == nil {
+		return act, nil
+	}
+	return nil, fmt.Errorf("no JSON or XML tool call found")
 }
 
 func decodeAction(raw []byte) (*action, error) {

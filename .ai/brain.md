@@ -63,6 +63,20 @@ tree, no venv, no folder sprawl.
 - Next: test with smaller models (14B, gpt-oss-20b)
 
 ## Session Log
+### 2026-08-08 — v1.8.1 build-breaker fix (Claude, babalou)
+- Found `main` broken: uncommitted `cmd/run.go` called `ensureProjectMeta(dir)`,
+  undefined anywhere in the repo/history. `go build ./...` was failing.
+- Implemented `ensureProjectMeta` (create-if-absent `.ai/brain.md`+`VERSION`
+  from assets templates, mirrors `cage init`'s never-clobber pattern).
+- Found `maxRepeat` doubled 3→6 in the same uncommitted diff — reverted to 3;
+  no justification in logs, and it directly weakens v1.8.0's defense hardening.
+- New XML tool-call fallback parser (added this session, tests pass) checked
+  against the live model's real Jinja template: only fires when a `tools`
+  schema is sent, which cage never does. Confirmed harmless, left in.
+- Verified: build/vet/test clean (98 tests, 17 pkgs). Live run of
+  dedup-tool.yaml (the DOD that locked the cage 2026-08-06) against
+  Qwen2.5-Coder-32B on :8080 — failures 16→3→2→2 across attempts, no
+  repeat of the file_read loop that caused the original lock.
 ### 2026-07-05 — Continual Harness v1 (Claude, babalou)
 - `cage evolve` built: internal/skills (store + deterministic gate + 6 tests),
   internal/evolve (proposer — the ONLY new package importing backend),
@@ -104,6 +118,7 @@ tree, no venv, no folder sprawl.
 ## Version History
 | Version | Date       | Change                      | Files |
 |---------|------------|-----------------------------|-------|
+| 1.8.1   | 2026-08-08 | fix: `ensureProjectMeta` was undefined, build was broken on main; revert maxRepeat 6→3 (unjustified regression of v1.8.0 defense hardening) | cmd/run.go, internal/worker/agent.go |
 | 1.7.0   | 2026-08-06 | cage-ralph architecture: cage directs, ralph guides, model executes. 5-20 line context per turn. | internal/cage/directive.go, internal/worker/agent.go, cmd/run.go |
 | 1.6.0   | 2026-08-06 | critic fix (exec.LookPath guard), 31 verification engine tests, clean test suite | internal/critic/mypy.go, internal/cage/cage_test.go |
 | 1.5.0   | 2026-07-09 | planner: optional Claude Fable 5 diagnosis between attempts, writes PLAN.md | internal/planner/, cmd/run.go, README.md |

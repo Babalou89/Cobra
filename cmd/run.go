@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"cobra/assets"
 	"cobra/internal/backend"
 	"cobra/internal/cage"
 	"cobra/internal/config"
@@ -38,6 +39,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		ensureProjectMeta(dir)
 		st, err := state.Load(state.StatePath(dir))
 		if err != nil {
 			return err
@@ -260,6 +262,21 @@ var runCmd = &cobra.Command{
 			report = res.Report()
 		}
 	},
+}
+
+// ensureProjectMeta scaffolds .ai/brain.md and .ai/VERSION when a project
+// was never `cage init`-ed. Existing files are never touched.
+func ensureProjectMeta(dir string) {
+	aiDir := filepath.Join(dir, ".ai")
+	_ = os.MkdirAll(aiDir, 0o755)
+	brain := filepath.Join(aiDir, "brain.md")
+	if _, err := os.Stat(brain); os.IsNotExist(err) {
+		_ = os.WriteFile(brain, assets.BrainTemplate, 0o644)
+	}
+	version := filepath.Join(aiDir, "VERSION")
+	if _, err := os.Stat(version); os.IsNotExist(err) {
+		_ = os.WriteFile(version, []byte("0.1.0\n"), 0o644)
+	}
 }
 
 func firstLineOf(s string) string {
