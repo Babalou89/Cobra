@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"net/http"
 	"time"
 )
@@ -13,20 +14,26 @@ import (
 // planner role. Works with llama.cpp's built-in server.
 type Client struct {
 	BaseURL    string // e.g. "http://127.0.0.1:8080"
+	APIKey     string // Bearer token for xAI/Groq/OpenAI-compatible
 	Model      string // e.g. "local"
 	HTTPClient *http.Client
 }
 
 // NewClient returns a planner Client targeting a local llama-server.
 func NewClient(baseURL, apiKey, model string) *Client {
+	if apiKey == "" {
+		apiKey = os.Getenv("GROQ_API_KEY")
+	}
 	if baseURL == "" {
-		baseURL = "http://127.0.0.1:8080"
+		baseURL = "https://api.groq.com/openai/v1"
 	}
 	if model == "" {
-		model = "local"
+		model = "llama-3.3-70b-versatile"
 	}
 	return &Client{
 		BaseURL:    baseURL,
+		APIKey:     apiKey,
+		Model:      model,
 		HTTPClient: &http.Client{Timeout: 120 * time.Second},
 	}
 }
@@ -81,6 +88,9 @@ func (c *Client) Chat(system, user string, maxTokens int) (string, error) {
 		return "", fmt.Errorf("planner: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if c.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	}
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {

@@ -24,7 +24,7 @@ worker:
   temperature: 0.6
 planner:
   enabled: true
-  base_url: "http://127.0.0.1:8080"
+  base_url: "https://api.groq.com/openai/v1"
   api_key: ""
-  model: "local"
+  model: "llama-3.3-70b-versatile"
   max_tokens: 2000
