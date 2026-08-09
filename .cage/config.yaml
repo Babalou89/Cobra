@@ -4,9 +4,9 @@ backend:
     base_url: "http://127.0.0.1:8080"
     model: "local"
     max_context: "32768"
-dod: ".cage/dods/plan-stage.yaml"
+dod: ".cage/dods/babaface-review.yaml"
 jail:
-  root: "."
+  root: "/home/billy/babaface"
 budget:
   max_tokens: 24000
   prompt_ceiling: 8000
@@ -22,3 +22,9 @@ worker:
   attempt_seconds: 900
   max_gen_tokens: 12288
   temperature: 0.6
+planner:
+  enabled: true
+  base_url: "http://127.0.0.1:8080"
+  api_key: ""
+  model: "local"
+  max_tokens: 2000

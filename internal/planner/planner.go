@@ -26,7 +26,7 @@ var filePat = regexp.MustCompile(`([a-zA-Z0-9_./-]+\.(py|go|js|ts|sh|yaml|yml|js
 //   - A structured plan with diagnosis per failure, exact file changes,
 //     and priority ordering
 func Diagnose(cfg *config.Config, failures []string, dir string) string {
-	if !cfg.Planner.Enabled || cfg.Planner.APIKey == "" {
+	if !cfg.Planner.Enabled {
 		return ""
 	}
 	if len(failures) == 0 {

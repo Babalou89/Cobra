@@ -9,65 +9,54 @@ import (
 	"time"
 )
 
-// Client wraps the Anthropic Messages API for the planner role.
-// Uses OneProvider as the default base URL.
+// Client wraps an OpenAI-compatible /v1/chat/completions endpoint for the
+// planner role. Works with llama.cpp's built-in server.
 type Client struct {
-	BaseURL    string // e.g. "https://api.oneprovider.dev"
-	APIKey     string
-	Model      string // e.g. "claude-fable-5"
+	BaseURL    string // e.g. "http://127.0.0.1:8080"
+	Model      string // e.g. "local"
 	HTTPClient *http.Client
 }
 
-// NewClient returns a planner Client with sensible defaults.
+// NewClient returns a planner Client targeting a local llama-server.
 func NewClient(baseURL, apiKey, model string) *Client {
 	if baseURL == "" {
-		baseURL = "https://api.oneprovider.dev"
+		baseURL = "http://127.0.0.1:8080"
 	}
 	if model == "" {
-		model = "claude-fable-5"
+		model = "local"
 	}
 	return &Client{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
-		Model:   model,
-		HTTPClient: &http.Client{
-			Timeout: 90 * time.Second,
-		},
+		BaseURL:    baseURL,
+		HTTPClient: &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
-// msg is the wire format for a single message.
-type msg struct {
+type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-// chatReq is the Anthropic Messages API request body.
 type chatReq struct {
-	Model     string `json:"model"`
-	MaxTokens int    `json:"max_tokens"`
-	System    string `json:"system,omitempty"`
-	Messages  []msg  `json:"messages"`
+	Model       string        `json:"model"`
+	Messages    []chatMessage `json:"messages"`
+	MaxTokens   int           `json:"max_tokens"`
+	Temperature float64       `json:"temperature"`
 }
 
-// contentBlock is one block in the response content array.
-type contentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
-}
-
-// chatResp is the Anthropic Messages API response body.
 type chatResp struct {
-	Content []contentBlock `json:"content"`
-	Error   *apiError      `json:"error,omitempty"`
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+	Error *apiError `json:"error,omitempty"`
 }
 
 type apiError struct {
 	Message string `json:"message"`
-	Type    string `json:"type"`
 }
 
-// Chat sends a single messages request and returns the text response.
+// Chat sends a single request and returns the text response.
 // Returns empty string and nil error on any failure (graceful degradation).
 func (c *Client) Chat(system, user string, maxTokens int) (string, error) {
 	if maxTokens <= 0 {
@@ -75,10 +64,10 @@ func (c *Client) Chat(system, user string, maxTokens int) (string, error) {
 	}
 
 	body := chatReq{
-		Model:     c.Model,
-		MaxTokens: maxTokens,
-		System:    system,
-		Messages:  []msg{{Role: "user", Content: user}},
+		Model:       c.Model,
+		Messages:    []chatMessage{{Role: "system", Content: system}, {Role: "user", Content: user}},
+		MaxTokens:   maxTokens,
+		Temperature: 0.3,
 	}
 
 	data, err := json.Marshal(body)
@@ -86,14 +75,12 @@ func (c *Client) Chat(system, user string, maxTokens int) (string, error) {
 		return "", fmt.Errorf("planner: marshal request: %w", err)
 	}
 
-	url := c.BaseURL + "/v1/messages"
+	url := c.BaseURL + "/v1/chat/completions"
 	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
 		return "", fmt.Errorf("planner: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", c.APIKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -101,7 +88,7 @@ func (c *Client) Chat(system, user string, maxTokens int) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
 		return "", fmt.Errorf("planner: read response: %w", err)
 	}
@@ -112,21 +99,18 @@ func (c *Client) Chat(system, user string, maxTokens int) (string, error) {
 	}
 
 	if cr.Error != nil {
-		return "", fmt.Errorf("planner: api error: %s (%s)", cr.Error.Message, cr.Error.Type)
+		return "", fmt.Errorf("planner: api error: %s", cr.Error.Message)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("planner: http %d: %s", resp.StatusCode, truncate(string(respBody), 200))
 	}
 
-	// Extract text from the first content block of type "text".
-	for _, block := range cr.Content {
-		if block.Type == "text" && block.Text != "" {
-			return block.Text, nil
-		}
+	if len(cr.Choices) == 0 {
+		return "", fmt.Errorf("planner: no choices in response")
 	}
 
-	return "", fmt.Errorf("planner: no text content in response")
+	return cr.Choices[0].Message.Content, nil
 }
 
 func truncate(s string, n int) string {

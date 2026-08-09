@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -223,6 +224,7 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 
 // buildUser assembles the per-turn user message. In ralph mode this is the
 // whole context reconstruction: everything the model needs, every turn.
+
 func (a *Agent) buildUser(task, fixTarget, verifyReport string) string {
 	var sb strings.Builder
 	sb.WriteString("Task:\n" + task + "\n")
@@ -231,6 +233,22 @@ func (a *Agent) buildUser(task, fixTarget, verifyReport string) string {
 	}
 	if verifyReport != "" && verifyReport != fixTarget {
 		sb.WriteString("\nVerify report:\n" + verifyReport + "\n")
+	}
+	if a.Ralph {
+		notes := "(empty - you have recorded nothing yet)"
+		if a.NotesPath != "" {
+			if data, err := os.ReadFile(a.NotesPath); err == nil && len(data) > 0 {
+				notes = ctxdiet.ClampTo(string(data), 1500)
+			}
+		}
+		sb.WriteString("\nNOTES.md - your only durable memory (conversation resets every turn):\n" + notes + "\n")
+	}
+	if a.PlanPath != "" {
+		plan := "(no plan - planner not run yet)"
+		if data, err := os.ReadFile(a.PlanPath); err == nil && len(data) > 0 {
+			plan = ctxdiet.ClampTo(string(data), 1500)
+		}
+		sb.WriteString("\nPlanner diagnosis - follow this plan:\n" + plan + "\n")
 	}
 	result := sb.String()
 	lines := strings.Split(result, "\n")
@@ -438,6 +456,29 @@ func decodeAction(raw []byte) (*action, error) {
 		}
 	}
 	if !act.Done && act.Tool == "" {
+		// Qwen often emits {"tool_name": {...}} or {"tool_name": "value"} instead
+		// of {"tool": "...", "args": {...}}. Detect both patterns.
+		var flat map[string]any
+		if json.Unmarshal(raw, &flat) == nil {
+			for k, v := range flat {
+				switch k {
+				case "done", "summary":
+					continue
+				}
+				switch val := v.(type) {
+				case map[string]any:
+					// {"file_write": {"path": "...", "content": "..."}}
+					act.Tool = k
+					act.Args = val
+					return &act, nil
+				case string:
+					// {"note": "some text"} or {"done": true, "summary": "..."}
+					act.Tool = k
+					act.Args = map[string]any{"text": val}
+					return &act, nil
+				}
+			}
+		}
 		return nil, fmt.Errorf(`action must set "tool" or "done"`)
 	}
 	// Local models often flatten args to the top level — accept both shapes.
