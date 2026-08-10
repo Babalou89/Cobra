@@ -152,6 +152,13 @@ Models tested with cage-ralph:
 Run them on any single file with `cage peek <file>`.
 
 ## Changelog
+**v1.9.0** — instruct harness (InstructRegistry + dod_format config)
+- **InstructRegistry:** 2-tool registry (file_write + code_execute) for step-following models. No file_read, no note, no exploratory tools.
+- **InstructPrompt:** aggressive system prompt — execute steps in order, write code immediately, no prose.
+- **dod_format config field:** set `dod_format: instruct` in .cage/config.yaml to activate instruct mode.
+- **RalphRegistry trimmed:** note tool removed (4 to 3 tools). Models wasted turns on notes instead of code.
+- **Agent.Instruct:** skips brain.md and NOTES.md injection — task is self-contained.
+- **Tests:** 33/33 worker tests pass including new TestInstructRegistryToolCount.
 
 **v1.8.1** — build-breaker fix + loop-guard regression revert
 - **Fixed:** `cmd/run.go` called `ensureProjectMeta(dir)`, a function that didn't exist anywhere in the codebase — `go build` was broken on `main`. Implemented it (creates `.ai/brain.md` / `.ai/VERSION` from embedded templates if missing, same pattern as `cage init`, never clobbers existing files).
