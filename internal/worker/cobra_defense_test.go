@@ -215,18 +215,35 @@ func TestRalphContextBoundedWithNewTrim(t *testing.T) {
 }
 
 func TestRalphRegistryToolCount(t *testing.T) {
-	expectedTools := []string{"file_read", "file_write", "note", "code_execute"}
+	expectedTools := []string{"file_read", "file_write", "code_execute"}
 	r := stubRegistry()
 	for _, name := range expectedTools {
 		r.Register(&Tool{Name: name, Usage: "{}", Desc: "test",
 			Fn: func(args map[string]any) ToolResult { return ToolResult{OK: true} }})
 	}
-	if len(expectedTools) != 4 {
-		t.Fatalf("expected 4 ralph tools, got %d", len(expectedTools))
+	if len(expectedTools) != 3 {
+		t.Fatalf("expected 3 ralph tools, got %d", len(expectedTools))
 	}
-	for _, blocked := range []string{"list_dir", "file_edit", "web_fetch", "web_search", "system_info", "shell", "skill_run"} {
+	for _, blocked := range []string{"list_dir", "file_edit", "web_fetch", "web_search", "system_info", "shell", "skill_run", "note"} {
 		if r.Has(blocked) {
 			t.Fatalf("ralph registry should NOT have %s", blocked)
+		}
+	}
+}
+
+func TestInstructRegistryToolCount(t *testing.T) {
+	expectedTools := []string{"file_write", "code_execute"}
+	r := stubRegistry()
+	for _, name := range expectedTools {
+		r.Register(&Tool{Name: name, Usage: "{}", Desc: "test",
+			Fn: func(args map[string]any) ToolResult { return ToolResult{OK: true} }})
+	}
+	if len(expectedTools) != 2 {
+		t.Fatalf("expected 2 instruct tools, got %d", len(expectedTools))
+	}
+	for _, blocked := range []string{"file_read", "list_dir", "file_edit", "web_fetch", "web_search", "system_info", "shell", "skill_run", "note"} {
+		if r.Has(blocked) {
+			t.Fatalf("instruct registry should NOT have %s", blocked)
 		}
 	}
 }

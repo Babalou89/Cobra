@@ -20,9 +20,6 @@ import (
 const maxRepeat = 3
 
 // slidingWindowSize is how many recent actions the loop detector examines.
-// Instead of only catching N consecutive identical actions, we now look at
-// the last slidingWindowSize actions and check for stuck patterns (e.g.
-// alternating file_read on different files).
 const slidingWindowSize = 6
 
 // fileReadThreshold is the max number of file_read calls allowed in the
@@ -31,28 +28,24 @@ const fileReadThreshold = 4
 
 // Agent drives one backend through the tool registry until the model
 // signals done, the dead-man's switch fires, or the loop detector trips.
-// It cannot verify and it cannot touch the repository — both live on the
-// cage side of the binary.
 type Agent struct {
 	Backend        backend.Backend
 	Tools          *Registry
 	Budget         ctxdiet.Budget
-	MaxTurns       int           // per attempt; the outer loop re-runs until verify passes or strikes lock
-	AttemptTimeout time.Duration // dead-man's switch: wall-clock cap per attempt
-	MaxGenTokens   int           // generation cap per reply
+	MaxTurns       int
+	AttemptTimeout time.Duration
+	MaxGenTokens   int
 	Temperature    float64
 
-	// Ralph mode: context is reconstructed every turn — task + DOD +
-	// NOTES.md + last verify report + the last couple of actions. Nothing
-	// accumulates, so nothing overflows. NotesPath is the model's only
-	// durable memory, a plain file inside the jail.
 	Ralph     bool
+	Instruct  bool // instruct mode: stripped-down prompt, no notes, no brain
 	NotesPath string
-	PlanPath  string // path to PLAN.md (written by planner between attempts)
+	PlanPath  string
+	BrainPath string // .ai/brain.md — project memory injected every turn
 
 	Log     func(format string, args ...any)
 	Trace   func(turn int, tool string, ok bool, summary string)
-	Observe func(kind string, fields map[string]any) // live feed for cage watch
+	Observe func(kind string, fields map[string]any)
 }
 
 type action struct {
@@ -86,7 +79,12 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 	}
 
 	deadline := time.Now().Add(a.AttemptTimeout)
-	system := SystemPrompt(a.Tools.Describe(), a.Ralph)
+	var system string
+	if a.Instruct {
+		system = InstructPrompt(a.Tools.Describe())
+	} else {
+		system = SystemPrompt(a.Tools.Describe(), a.Ralph)
+	}
 
 	var steps []ctxdiet.Step
 	lastSig := ""
@@ -101,7 +99,6 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 		return repeatCount >= maxRepeat
 	}
 
-	// Sliding window of recent tool names for stuck-pattern detection.
 	recentTools := make([]string, 0, slidingWindowSize)
 	fileReadCount := 0
 
@@ -123,8 +120,6 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 
 		reply, err := a.Backend.Chat(msgs, a.Temperature, a.MaxGenTokens)
 		if err != nil {
-			// A context overflow the estimator missed is recoverable:
-			// shed half the history and retry the turn.
 			if strings.Contains(err.Error(), "context size") && len(steps) > 2 {
 				logf("context overflow from backend — shedding %d history steps", len(steps)/2)
 				steps = steps[len(steps)/2:]
@@ -164,12 +159,10 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 			return fmt.Errorf("loop detected: %s called %d times in a row with identical arguments — aborting attempt", act.Tool, repeatCount)
 		}
 
-		// --- Stuck-pattern detection: sliding window of recent tools ---
 		recentTools = append(recentTools, act.Tool)
 		if len(recentTools) > slidingWindowSize {
 			recentTools = recentTools[1:]
 		}
-		// Count file_read in the sliding window.
 		readCount := 0
 		for _, t := range recentTools {
 			if t == "file_read" {
@@ -180,7 +173,6 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 			return fmt.Errorf("loop detected: %d file_read calls in last %d actions — model is stuck reading instead of writing; aborting attempt", readCount, slidingWindowSize)
 		}
 
-		// --- Hard cap on total file_read calls per attempt ---
 		if act.Tool == "file_read" {
 			fileReadCount++
 			readCap := a.MaxTurns / 3
@@ -192,7 +184,6 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 			}
 		}
 
-		// --- Ban file_edit in ralph mode: Qwen can't match exact strings ---
 		if a.Ralph && act.Tool == "file_edit" {
 			observe("result", map[string]any{"turn": turn, "tool": "file_edit", "ok": false, "text": "file_edit disabled in ralph mode — use file_write instead"})
 			steps = append(steps,
@@ -224,7 +215,7 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 
 // buildUser assembles the per-turn user message. In ralph mode this is the
 // whole context reconstruction: everything the model needs, every turn.
-
+// Injection order: task → failures → verify report → brain.md → NOTES.md → PLAN.md
 func (a *Agent) buildUser(task, fixTarget, verifyReport string) string {
 	var sb strings.Builder
 	sb.WriteString("Task:\n" + task + "\n")
@@ -234,7 +225,22 @@ func (a *Agent) buildUser(task, fixTarget, verifyReport string) string {
 	if verifyReport != "" && verifyReport != fixTarget {
 		sb.WriteString("\nVerify report:\n" + verifyReport + "\n")
 	}
-	if a.Ralph {
+
+	// Project memory (brain.md) — the model's persistent world model.
+	// Tech stack, version history, known issues, session log, rules.
+	// Injected every turn so the model never loses sight of what the
+	// project IS, even after conversation reset.
+	// Skipped in instruct mode — the task is self-contained.
+	if a.BrainPath != "" && !a.Instruct {
+		brain := "(no project memory found)"
+		if data, err := os.ReadFile(a.BrainPath); err == nil && len(data) > 0 {
+			brain = ctxdiet.ClampTo(string(data), 2000)
+		}
+		sb.WriteString("\nPROJECT MEMORY (brain.md):\n" + brain + "\n")
+	}
+
+	// In instruct mode, no notes — task is self-contained.
+	if a.Ralph && !a.Instruct {
 		notes := "(empty - you have recorded nothing yet)"
 		if a.NotesPath != "" {
 			if data, err := os.ReadFile(a.NotesPath); err == nil && len(data) > 0 {
@@ -339,9 +345,6 @@ func argsHash(args map[string]any) string {
 	return hex.EncodeToString(sum[:8])
 }
 
-// repairJSON escapes raw control characters found inside JSON string
-// literals — the dominant local-model failure when a file body rides
-// inside a JSON action ("content":"line1<newline>line2").
 func repairJSON(raw []byte) []byte {
 	var out []byte
 	inString := false
@@ -351,10 +354,6 @@ func repairJSON(raw []byte) []byte {
 			switch {
 			case escaped:
 				escaped = false
-				// \' is invalid JSON (but valid in Python) — models emit it when
-				// embedding code with single quotes. Drop the backslash we already
-				// wrote; the model meant a bare '. Deterministic repair of a
-				// single-answer syntax error — never an interpretation of intent.
 				if c == '\'' && len(out) > 0 && out[len(out)-1] == '\\' {
 					out = out[:len(out)-1]
 				}
@@ -383,7 +382,6 @@ func repairJSON(raw []byte) []byte {
 	return out
 }
 
-// xmlToolCallRe matches Qwen XML tool-call format.
 var xmlToolCallRe = regexp.MustCompile(`(?s)<function=([^>]+)>\s*(.*?)\s*</function>`)
 var xmlParamRe = regexp.MustCompile(`(?s)<parameter=([^>]+)>(.*?)</parameter>`)
 

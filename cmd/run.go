@@ -1,4 +1,4 @@
-	package cmd
+package cmd
 
 import (
 	"encoding/json"
@@ -26,6 +26,55 @@ import (
 )
 
 var runDOD string
+var runWatch bool
+var runLog string
+
+// startLogCapture redirects os.Stdout to both the terminal and a log file.
+// Returns a cleanup function that must be deferred.
+func startLogCapture(logPath string) func() {
+	if logPath == "" {
+		return func() {}
+	}
+
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "log: could not create %s: %v\n", logPath, err)
+		return func() {}
+	}
+
+	// Save the real stdout fd so we can write to terminal + file.
+	origStdout := os.Stdout
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		logFile.Close()
+		fmt.Fprintf(os.Stderr, "log: pipe failed: %v\n", err)
+		return func() {}
+	}
+	os.Stdout = w
+
+	// Background goroutine: read from pipe, write to terminal + log file.
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := r.Read(buf)
+			if n > 0 {
+				_, _ = origStdout.Write(buf[:n])
+				_, _ = logFile.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	return func() {
+		w.Close()   // signals the goroutine to exit
+		r.Close()   // cleanup read end
+		logFile.Close()
+		os.Stdout = origStdout
+	}
+}
 
 var runCmd = &cobra.Command{
 	Use:   `run "<task>"`,
@@ -34,6 +83,14 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		task := args[0]
 		dir := "."
+
+		// Start session log capture — everything from here on goes to file + terminal.
+		logPath := runLog
+		if logPath == "" {
+			logPath = filepath.Join(dir, ".cage", "session.log")
+		}
+		cleanup := startLogCapture(logPath)
+		defer cleanup()
 
 		cfg, err := config.Load(dir)
 		if err != nil {
@@ -108,13 +165,19 @@ var runCmd = &cobra.Command{
 		}
 
 		// Choose tool registry based on mode. Ralph mode gets a minimal
-		// 4-tool set (file_read, file_write, note, code_execute) to prevent
-		// the model from exploring instead of coding.
+		// 3-tool set (file_read, file_write, code_execute) to prevent
+		// the model from exploring instead of coding. Instruct mode gets
+		// the tightest set (file_write, code_execute only) for step-following
+		// models that get distracted by any extra tool.
 		isRalph := cfg.Worker.Mode != "conversational"
+		isInstruct := cfg.DodFormat == "instruct"
 		var tools *worker.Registry
-		if isRalph {
+		switch {
+		case isInstruct:
+			tools = worker.InstructRegistry(jl)
+		case isRalph:
 			tools = worker.RalphRegistry(jl)
-		} else {
+		default:
 			tools = worker.DefaultRegistry(jl, skills.Root(dir))
 		}
 
@@ -128,7 +191,9 @@ var runCmd = &cobra.Command{
 			MaxGenTokens:   cfg.Worker.MaxGenTokens,
 			Temperature:    cfg.Worker.Temperature,
 			Ralph:          isRalph,
+			Instruct:       isInstruct,
 			NotesPath:      filepath.Join(jl.Root, "NOTES.md"),
+			BrainPath:      filepath.Join(dir, ".ai", "brain.md"),
 			Log: func(format string, a ...any) {
 				fmt.Printf("  "+format+"\n", a...)
 			},
@@ -162,7 +227,15 @@ var runCmd = &cobra.Command{
 		}
 
 		fmt.Printf("cage run — backend=%s dod=%s (%d criteria) jail=%s\n", be.Name(), dodPath, len(dod.Criteria), jl.Root)
+		fmt.Printf("session log: %s\n", logPath)
 		_ = state.Audit(state.AuditPath(dir), "run.start", map[string]any{"task": task, "backend": be.Name()})
+
+		// Launch the live dashboard when --watch is set (default true).
+		if runWatch {
+			dashURL, shutdownDash := startWatchServer(dir, watchPort, true)
+			defer shutdownDash()
+			fmt.Printf("dashboard: %s\n", dashURL)
+		}
 
 		report := ""
 		for attempt := 1; ; attempt++ {
@@ -173,8 +246,6 @@ var runCmd = &cobra.Command{
 			directive := dod.Direct(attempt, report)
 
 			// Inject planner summary from PLAN.md if it exists.
-			// The planner writes PLAN.md between attempts — inject it
-			// so the model has the diagnosis alongside the failures.
 			if planSummary := cage.InjectPlanner(jl.Root); planSummary != "" {
 				directive.FixTarget += planSummary
 			}
@@ -219,7 +290,7 @@ var runCmd = &cobra.Command{
 									break
 								}
 								fmt.Printf("critic: round %d — %d error(s)\n", r.Number, len(r.Errors))
-								_ = allowlist // allowlist available for future enforcement hooks
+								_ = allowlist
 								if round == critic.MaxRounds {
 									fmt.Fprintf(os.Stderr, "critic: max rounds reached, %d residual error(s)\n", len(r.Errors))
 								}
@@ -228,7 +299,6 @@ var runCmd = &cobra.Command{
 					}
 				}
 
-				// The binary — never the worker — holds commit authority.
 				msg := "cage: " + firstLineOf(task)
 				if err := gitx.CommitAll(dir, msg); err != nil {
 					return fmt.Errorf("verify passed but commit failed: %w", err)
@@ -291,5 +361,7 @@ func firstLineOf(s string) string {
 
 func init() {
 	runCmd.Flags().StringVar(&runDOD, "dod", "", "DOD file for this run (default from config)")
+	runCmd.Flags().BoolVar(&runWatch, "watch", true, "auto-launch live dashboard in browser")
+	runCmd.Flags().StringVar(&runLog, "log", "", "session log path (default: .cage/session.log)")
 	rootCmd.AddCommand(runCmd)
 }

@@ -20,7 +20,8 @@ type BackendCfg struct {
 // Config is the whole .cage/config.yaml surface.
 type Config struct {
 	Backend BackendCfg `yaml:"backend"`
-	DOD     string     `yaml:"dod"`
+	DOD        string `yaml:"dod"`
+	DodFormat  string `yaml:"dod_format"` // "" (default) | "instruct" — selects tool registry + prompt
 	Jail    struct {
 		Root string `yaml:"root"`
 	} `yaml:"jail"`

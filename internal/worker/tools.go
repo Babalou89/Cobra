@@ -95,16 +95,28 @@ func DefaultRegistry(w *jail.Workspace, skillsRoot string) *Registry {
 }
 
 // RalphRegistry returns the minimal toolset for ralph mode: file_read,
-// file_write, note, code_execute. No exploratory tools (list_dir, web_*,
-// system_info, skill_run, file_edit). The cage injects file contents into
-// FixTarget so the model doesn't need to explore. file_read stays because
-// the model may need files the cage didn't inject. code_execute covers
-// both shell and inline code execution.
+// file_write, code_execute. No exploratory tools (list_dir, web_*,
+// system_info, skill_run, file_edit, note). The cage injects file
+// contents into FixTarget so the model doesn't need to explore.
+// file_read stays because the model may need files the cage didn't inject.
+// code_execute covers both shell and inline code execution.
+// Note tool removed — instruct models waste turns on notes instead of code.
 func RalphRegistry(w *jail.Workspace) *Registry {
 	r := NewRegistry()
 	registerFSReadWrite(r, w)
 	registerShellExecute(r, w)
-	registerNote(r, w)
+	return r
+}
+
+// InstructRegistry returns the tightest toolset for instruct mode:
+// file_write + code_execute only. No file_read (cage injects all needed
+// file contents into FixTarget), no note, no exploratory tools.
+// Designed for step-following models like Qwen that get distracted by
+// any tool beyond the minimum needed to execute instructions.
+func InstructRegistry(w *jail.Workspace) *Registry {
+	r := NewRegistry()
+	r.Register(fileWriteTool(w))
+	registerShellExecute(r, w)
 	return r
 }
 
