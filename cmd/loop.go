@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,6 +53,11 @@ func runAttempts(p loopParams) error {
 		if err := agent.Run(composeTask(p.Task, directive.Task), directive.FixTarget, report); err != nil {
 			fmt.Fprintf(os.Stderr, "worker error: %v\n", err)
 			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "worker error: " + err.Error()})
+			if errors.Is(err, worker.ErrTurnsExhausted) {
+				// Models rarely signal done; the verifier decides, not the model.
+				fmt.Println("turn-out: model did not signal done — running verify once")
+				_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "turn-out: turns exhausted without done — verifying anyway"})
+			}
 		}
 
 		res, err := cage.Verify(cage.Options{Dir: dir, DODPath: p.DODPath, DODOnly: false})

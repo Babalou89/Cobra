@@ -39,3 +39,8 @@ RESULT S3c: PASS
 CHECK: go test ./cmd ./internal/config -run 'TestMaxAttempts|TestConfigMaxAttempts' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: config default 5 and key accepted by strict decode; exhausted loop returns handoff error, writes .cage/HANDOFF.md, makes no commit
 RESULT S3d: PASS (compile-fail first, then pass)
+
+## S3e Turn-out verify
+CHECK: go test ./cmd -run TestTurnOutVerifyPasses -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: worker exhausts turns without done after writing correct files; verify runs once and PASS commits via normal path; events log a turn-out status. NOTE recon said verify-after-attempt may be missing: code already verifies after worker error; this step makes it explicit (ErrTurnsExhausted) + observable.
+RESULT S3e: PASS (verify-after-attempt already existed; added ErrTurnsExhausted + turn-out event)

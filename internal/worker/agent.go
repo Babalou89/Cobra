@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -26,6 +27,11 @@ const slidingWindowSize = 6
 // fileReadThreshold is the max number of file_read calls allowed in the
 // sliding window before we declare the model stuck.
 const fileReadThreshold = 4
+
+// ErrTurnsExhausted is returned by Run when the turn budget ran out without
+// the model signalling done. The work on disk may still be correct, so the
+// caller verifies once instead of discarding the attempt.
+var ErrTurnsExhausted = errors.New("turns exhausted")
 
 // Agent drives one backend through the tool registry until the model
 // signals done, the dead-man's switch fires, or the loop detector trips.
@@ -211,7 +217,7 @@ func (a *Agent) Run(task, fixTarget, verifyReport string) error {
 			ctxdiet.Step{Role: "tool", Content: fmt.Sprintf("[%s %s] %s", act.Tool, status, ctxdiet.ClampTo(result.Output, a.toolCeiling()))})
 		steps = a.trim(steps)
 	}
-	return fmt.Errorf("worker used all %d turns without signalling done", a.MaxTurns)
+	return fmt.Errorf("%w: worker used all %d turns without signalling done", ErrTurnsExhausted, a.MaxTurns)
 }
 
 // buildUser assembles the per-turn user message. In ralph mode this is the

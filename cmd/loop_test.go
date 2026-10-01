@@ -159,3 +159,27 @@ func TestMaxAttemptsHandoff(t *testing.T) {
 		t.Fatal("handoff is not a strike lock")
 	}
 }
+
+func TestTurnOutVerifyPasses(t *testing.T) {
+	dir := newProject(t)
+	fb := fake.New(
+		act("file_write", map[string]any{"path": "hello.txt", "content": "hello\n"}),
+		act("file_write", map[string]any{"path": ".ai/VERSION", "content": "0.1.1\n"}),
+		act("code_execute", map[string]any{"command": "echo still working"}),
+	)
+	p := newLoop(t, dir, fb, nil)
+	p.Agent.MaxTurns = 3
+	if err := runAttempts(p); err != nil {
+		t.Fatalf("turn-out with correct work must pass verify: %v", err)
+	}
+	if !strings.Contains(gitIn(t, dir, "log", "--oneline"), "cage: cli-task") {
+		t.Fatal("expected commit through the normal path")
+	}
+	ev, _ := os.ReadFile(state.EventsPath(dir))
+	if !strings.Contains(string(ev), "turn-out") {
+		t.Fatalf("events must record the turn-out verify:\n%s", ev)
+	}
+	if fb.Calls() != 3 {
+		t.Fatalf("calls=%d want 3 (one attempt)", fb.Calls())
+	}
+}
