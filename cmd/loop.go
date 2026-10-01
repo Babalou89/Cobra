@@ -49,7 +49,7 @@ func runAttempts(p loopParams) error {
 			directive.FixTarget += planSummary
 		}
 
-		if err := agent.Run(directive.Task, directive.FixTarget, report); err != nil {
+		if err := agent.Run(composeTask(p.Task, directive.Task), directive.FixTarget, report); err != nil {
 			fmt.Fprintf(os.Stderr, "worker error: %v\n", err)
 			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "worker error: " + err.Error()})
 		}
@@ -133,4 +133,18 @@ func runCritic(dir string) {
 			fmt.Fprintf(os.Stderr, "critic: max rounds reached, %d residual error(s)\n", len(r.Errors))
 		}
 	}
+}
+
+// composeTask makes the CLI task string the model's primary instruction and
+// the DOD's task field supporting context. Before this the CLI string never
+// reached the model.
+func composeTask(cliTask, dodTask string) string {
+	cliTask, dodTask = strings.TrimSpace(cliTask), strings.TrimSpace(dodTask)
+	switch {
+	case cliTask == "":
+		return dodTask
+	case dodTask == "" || dodTask == cliTask:
+		return "TASK: " + cliTask
+	}
+	return "TASK: " + cliTask + "\n\nContext (from the definition of done):\n" + dodTask
 }

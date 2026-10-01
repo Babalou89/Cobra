@@ -19,3 +19,8 @@ RESULT S2: PASS — 107 -> 116 RUN lines
 CHECK: go build ./... && go vet ./... && go test ./cmd -run TestRunAttemptsPassCommits -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: behavior-preserving extraction; characterization test: fake backend writes correct file, verify passes, run commits
 RESULT S3-pre: PASS
+
+## S3a Task wiring (CLI task primary, DOD task context)
+CHECK: go test ./cmd -run TestTaskWiring -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: first user message to model contains "TASK: <cli string>" and the DOD task as context; test fails before fix
+RESULT S3a: PASS (failed first, passes after composeTask)

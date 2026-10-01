@@ -119,3 +119,23 @@ func TestRunAttemptsPassCommits(t *testing.T) {
 		t.Fatalf("no cage commit in log:\n%s", log)
 	}
 }
+
+func TestTaskWiring(t *testing.T) {
+	dir := newProject(t)
+	fb := fake.New(`{"done": true, "summary": "x"}`)
+	p := newLoop(t, dir, fb, nil)
+	_ = runAttempts(p)
+	if fb.Calls() == 0 {
+		t.Fatal("backend never called")
+	}
+	user := fb.Request(0)[1].Content
+	if !strings.Contains(user, "TASK: cli-task: make hello") {
+		t.Fatalf("CLI task missing from first user message:\n%s", user)
+	}
+	if !strings.Contains(user, "dod-task: create hello.txt") {
+		t.Fatalf("DOD task missing as context:\n%s", user)
+	}
+	if strings.Index(user, "TASK: cli-task") > strings.Index(user, "dod-task") {
+		t.Fatal("CLI task must come before DOD context")
+	}
+}
