@@ -183,3 +183,18 @@ func TestTurnOutVerifyPasses(t *testing.T) {
 		t.Fatalf("calls=%d want 3 (one attempt)", fb.Calls())
 	}
 }
+
+func TestAutoVersionBumpAtCommit(t *testing.T) {
+	dir := newProject(t)
+	fb := fake.New(
+		act("file_write", map[string]any{"path": "hello.txt", "content": "hello\n"}),
+		`{"done": true, "summary": "ok"}`,
+	)
+	p := newLoop(t, dir, fb, nil) // model never touches .ai/VERSION
+	if err := runAttempts(p); err != nil {
+		t.Fatalf("must pass without a model-made bump: %v", err)
+	}
+	if got := strings.TrimSpace(gitIn(t, dir, "show", "HEAD:.ai/VERSION")); got != "0.1.1" {
+		t.Fatalf("committed VERSION = %q, want 0.1.1", got)
+	}
+}

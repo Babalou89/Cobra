@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"cobra/internal/config"
@@ -43,7 +44,7 @@ func CoreChecks(dir string, cfg *config.Config) []string {
 	} else if gitx.IsRepo(dir) && gitx.HasHead(dir) {
 		old := gitx.VersionFromHistory(dir)
 		changed, _ := gitx.ChangedFiles(dir)
-		if len(meaningful(changed)) > 0 && old != "" && strings.TrimSpace(string(current)) == old {
+		if !cfg.AutoVersionBump && len(meaningful(changed)) > 0 && old != "" && strings.TrimSpace(string(current)) == old {
 			failures = append(failures, fmt.Sprintf("core: tree changed but .ai/VERSION still %s — bump it", old))
 		}
 	}
@@ -61,4 +62,36 @@ func meaningful(files []string) []string {
 		out = append(out, f)
 	}
 	return out
+}
+
+// BumpVersion bumps the last numeric segment of .ai/VERSION (patch for
+// x.y.z) when the tree has meaningful changes and the file still equals the
+// committed value. It returns the resulting version and whether it wrote.
+// A model-made bump (file already differs from HEAD) is left alone.
+func BumpVersion(dir string) (string, bool, error) {
+	versionPath := filepath.Join(dir, ".ai", "VERSION")
+	data, err := os.ReadFile(versionPath)
+	if err != nil {
+		return "", false, err
+	}
+	current := strings.TrimSpace(string(data))
+	if !gitx.IsRepo(dir) || !gitx.HasHead(dir) {
+		return current, false, nil
+	}
+	changed, _ := gitx.ChangedFiles(dir)
+	old := gitx.VersionFromHistory(dir)
+	if len(meaningful(changed)) == 0 || old == "" || current != old {
+		return current, false, nil
+	}
+	parts := strings.Split(current, ".")
+	n, err := strconv.Atoi(parts[len(parts)-1])
+	if err != nil {
+		return current, false, fmt.Errorf("cannot auto-bump unparsable version %q", current)
+	}
+	parts[len(parts)-1] = strconv.Itoa(n + 1)
+	next := strings.Join(parts, ".")
+	if err := os.WriteFile(versionPath, []byte(next+"\n"), 0o644); err != nil {
+		return current, false, err
+	}
+	return next, true, nil
 }

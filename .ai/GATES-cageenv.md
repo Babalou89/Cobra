@@ -44,3 +44,8 @@ RESULT S3d: PASS (compile-fail first, then pass)
 CHECK: go test ./cmd -run TestTurnOutVerifyPasses -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: worker exhausts turns without done after writing correct files; verify runs once and PASS commits via normal path; events log a turn-out status. NOTE recon said verify-after-attempt may be missing: code already verifies after worker error; this step makes it explicit (ErrTurnsExhausted) + observable.
 RESULT S3e: PASS (verify-after-attempt already existed; added ErrTurnsExhausted + turn-out event)
+
+## S3f auto_version_bump (default true)
+CHECK: go test ./cmd ./internal/cage ./internal/config -run 'AutoVersionBump' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: config key accepted, default true; core check does not fail missing bump when enabled (still fails when false); run that never touches VERSION passes and commit contains bumped .ai/VERSION; model-made bump not doubled
+RESULT S3f: PASS

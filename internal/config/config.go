@@ -57,6 +57,9 @@ type Config struct {
 	// MaxAttempts caps worker attempts per `cage run`; exhaustion ends the
 	// run in a handoff state (no commit) instead of spinning forever.
 	MaxAttempts int `yaml:"max_attempts"`
+	// AutoVersionBump lets cage (not the model) bump .ai/VERSION at commit
+	// time; the core check then no longer fails attempts for a missing bump.
+	AutoVersionBump bool `yaml:"auto_version_bump"`
 	// Critic toggles the mypy post-pass critic on touched .py files.
 	Critic struct {
 		Enabled bool `yaml:"enabled"`
@@ -91,6 +94,7 @@ func Defaults() *Config {
 	c.Critic.Enabled = false
 	c.CooldownSeconds = 10
 	c.MaxAttempts = 5
+	c.AutoVersionBump = true
 	return c
 }
 

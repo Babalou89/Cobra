@@ -73,6 +73,13 @@ func runAttempts(p loopParams) error {
 			if cfg.Critic.Enabled {
 				runCritic(dir)
 			}
+			if cfg.AutoVersionBump {
+				if v, bumped, err := cage.BumpVersion(dir); err != nil {
+					fmt.Fprintf(os.Stderr, "auto_version_bump: %v\n", err)
+				} else if bumped {
+					fmt.Printf("auto_version_bump: .ai/VERSION -> %s\n", v)
+				}
+			}
 			msg := "cage: " + firstLineOf(p.Task)
 			if err := gitx.CommitAll(dir, msg); err != nil {
 				return fmt.Errorf("verify passed but commit failed: %w", err)
