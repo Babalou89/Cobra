@@ -98,7 +98,29 @@ func runAttempts(p loopParams) error {
 			return fmt.Errorf("LOCKED after %d no-progress attempts — human reset required", state.MaxStrikes)
 		}
 		report = res.Report()
+		if attempt >= maxAttempts(cfg) {
+			return handoff(p, attempt, report)
+		}
 	}
+}
+
+func maxAttempts(cfg *config.Config) int {
+	if cfg.MaxAttempts <= 0 {
+		return 5
+	}
+	return cfg.MaxAttempts
+}
+
+// handoff is the terminal state for an exhausted run: nothing is committed,
+// the last verify report is written for the human, and the error says so.
+func handoff(p loopParams, attempts int, report string) error {
+	path := filepath.Join(p.Dir, ".cage", "HANDOFF.md")
+	body := fmt.Sprintf("# cage HANDOFF\n\nTask: %s\n\n%d attempt(s) used (max_attempts=%d); verify never passed. Nothing was committed.\n\n## Last verify report\n\n%s\n",
+		p.Task, attempts, maxAttempts(p.Cfg), report)
+	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+	_ = os.WriteFile(path, []byte(body), 0o644)
+	_ = state.Audit(state.AuditPath(p.Dir), "run.handoff", map[string]any{"attempts": attempts})
+	return fmt.Errorf("HANDOFF: %d attempts used without a passing verify — nothing committed; see %s", attempts, path)
 }
 
 // runCritic runs the post-pass mypy critic on touched .py files.

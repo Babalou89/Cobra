@@ -139,3 +139,23 @@ func TestTaskWiring(t *testing.T) {
 		t.Fatal("CLI task must come before DOD context")
 	}
 }
+
+func TestMaxAttemptsHandoff(t *testing.T) {
+	dir := newProject(t)
+	fb := &fake.Backend{Replies: []string{`{"done": true, "summary": "nothing"}`}, Repeat: true}
+	p := newLoop(t, dir, fb, func(c *config.Config) { c.MaxAttempts = 2 })
+	err := runAttempts(p)
+	if err == nil || !strings.Contains(err.Error(), "HANDOFF") {
+		t.Fatalf("want handoff error, got %v", err)
+	}
+	if n := strings.Count(gitIn(t, dir, "log", "--oneline"), "\n"); n != 1 {
+		t.Fatalf("handoff must not commit; log has %d commits", n)
+	}
+	data, rerr := os.ReadFile(filepath.Join(dir, ".cage", "HANDOFF.md"))
+	if rerr != nil || !strings.Contains(string(data), "hello exists") {
+		t.Fatalf("HANDOFF.md missing or lacks last failure report: %q %v", data, rerr)
+	}
+	if p.State.Locked {
+		t.Fatal("handoff is not a strike lock")
+	}
+}

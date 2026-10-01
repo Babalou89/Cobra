@@ -34,3 +34,8 @@ RESULT S3b: PASS
 CHECK: go test ./internal/worker -run 'TestDecodeAction(Deterministic|Precedence)' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: precedence "tool"+"args" > "done" > tool-name-keyed (sorted keys); 2-key reply decoded 100x gives identical tool
 RESULT S3c: PASS
+
+## S3d max_attempts (default 5) -> handoff terminal state
+CHECK: go test ./cmd ./internal/config -run 'TestMaxAttempts|TestConfigMaxAttempts' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: config default 5 and key accepted by strict decode; exhausted loop returns handoff error, writes .cage/HANDOFF.md, makes no commit
+RESULT S3d: PASS (compile-fail first, then pass)

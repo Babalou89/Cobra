@@ -54,6 +54,9 @@ type Config struct {
 		MaxTokens int    `yaml:"max_tokens"`
 	} `yaml:"planner"`
 	CooldownSeconds int `yaml:"cooldown_seconds"`
+	// MaxAttempts caps worker attempts per `cage run`; exhaustion ends the
+	// run in a handoff state (no commit) instead of spinning forever.
+	MaxAttempts int `yaml:"max_attempts"`
 	// Critic toggles the mypy post-pass critic on touched .py files.
 	Critic struct {
 		Enabled bool `yaml:"enabled"`
@@ -87,6 +90,7 @@ func Defaults() *Config {
 	c.Planner.MaxTokens = 2000
 	c.Critic.Enabled = false
 	c.CooldownSeconds = 10
+	c.MaxAttempts = 5
 	return c
 }
 
@@ -121,6 +125,9 @@ func Load(dir string) (*Config, error) {
 	}
 	if cfg.Budget.PromptCeiling <= 0 {
 		cfg.Budget.PromptCeiling = 8000
+	}
+	if cfg.MaxAttempts <= 0 {
+		cfg.MaxAttempts = 5
 	}
 	if cfg.Worker.Mode == "" {
 		cfg.Worker.Mode = "ralph"
