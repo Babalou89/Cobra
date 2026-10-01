@@ -23,3 +23,10 @@
 - Server accepts only 127.0.0.1/10.0.0.1 as bind hosts (ValueError otherwise): enforces the 0029v bind policy in code, not just UFW.
 - Client bypass overrides even a reachable deny and is logged to the server (/bypass) or a local spool flushed on next contact: "every bypass logged and alarmed on reconnect".
 - Client shim reads intended content via --content-file so header rules (R09/R10) can be enforced at hook time.
+- Watcher decisions come from a snapshot diff; inotify (ctypes) is only a wake-up: one decision path for both modes, poll fallback is guaranteed correct and inotify can miss events safely (1s tick).
+- A path is judged only after its (size, mtime) is stable for `settle` (0.3s): avoids quarantining a file mid-write (create empty, then write header).
+- Only NEW files/dirs are moved to quarantine; modified/deleted tracked files get an incident + evidence copy and stay in place: quarantining a tracked file would destroy SPEC.md/history that the librarian cannot restore.
+- A bad dir is quarantined whole (one incident) and its children are skipped: one alarm per act, not per file.
+- Config.ignore_rel defaults to infra/librarian/quarantine and infra/librarian/state: 0029v puts quarantine inside the tree, so the watcher/scan/rules must ignore it or they would loop.
+- Approve exceptions cover a quarantined dir's whole subtree (sha '' = path prefix): otherwise the restored children would be re-quarantined one by one.
+- Alarm failure never raises (NtfyNotifier swallows errors): enforcement must not depend on the notifier; LogNotifier is the backstop.

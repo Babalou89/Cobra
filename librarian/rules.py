@@ -27,6 +27,7 @@ class Config:
     allowlist: tuple = (".gitignore", "config.yaml")
     max_depth: int = 3
     ignore: tuple = (".git",)
+    ignore_rel: tuple = ("infra/librarian/quarantine", "infra/librarian/state")   # librarian's own state inside the tree
 
 
 DEFAULT = Config()
@@ -152,13 +153,20 @@ def _is_dir(root, parts, path):
     return path.endswith("/") or os.path.isdir(os.path.join(root, *parts))
 
 
+def is_ignored(cfg, parts):
+    if any(p in cfg.ignore for p in parts):
+        return True
+    rel = "/".join(parts)
+    return any(rel == r or rel.startswith(r + "/") for r in cfg.ignore_rel)
+
+
 def _unit_dir(root, parts):
     return os.path.join(root, parts[0], parts[1])
 
 
 # ---------------------------------------------------------------- create validation
 
-def _validate_create(cfg, root, parts, isdir, content):
+def _validate_create(cfg, root, parts, isdir, content, existing=False):
     name = parts[-1]
     n = len(parts)
     if n == 1:
@@ -204,7 +212,7 @@ def _validate_create(cfg, root, parts, isdir, content):
         return
     rel = parts[2:]
     if rel[0] == "raw":
-        if not isdir and os.path.exists(os.path.join(root, *parts)):
+        if not isdir and not existing and os.path.exists(os.path.join(root, *parts)):
             _deny("R06", "raw files are never overwritten")
         return
     if "raw" in rel[1:]:
@@ -233,13 +241,25 @@ def _validate_create(cfg, root, parts, isdir, content):
     if pc is None:
         _deny("R01", "leaf file in %s/ must be named NNNNv%s.<ext> (4 digits, lowercase v, slug == dir name)" % (slug, slug),
               _suggest(parent, slug, name))
-    if exists:
-        _deny("R03", "%s exists; numbered files are immutable, write the next version" % name, _suggest(parent, slug, name))
     ver, ext = pc
-    want = next_version(parent, slug)
-    if ver != want:
-        _deny("R02", "version %04d is not next; versions are consecutive from 0001 (next is %04d)" % (ver, want),
-              chain_name(slug, want, ext))
+    if existing:
+        others = set()
+        for n2 in _listdir(parent):
+            pc2 = parse_chain(n2, slug)
+            if n2 != name and pc2:
+                others.add(pc2[0])
+        if ver in others:
+            _deny("R02", "version %04d exists more than once" % ver)
+        if ver != 1 and (ver - 1) not in others:
+            _deny("R02", "version %04d has no predecessor (versions are consecutive from 0001)" % ver,
+                  chain_name(slug, next_version(parent, slug), ext))
+    else:
+        if exists:
+            _deny("R03", "%s exists; numbered files are immutable, write the next version" % name, _suggest(parent, slug, name))
+        want = next_version(parent, slug)
+        if ver != want:
+            _deny("R02", "version %04d is not next; versions are consecutive from 0001 (next is %04d)" % (ver, want),
+                  chain_name(slug, want, ext))
     if ext == "md" and content is not None:
         prob = header_problem(content, slug, ver)
         if prob:
@@ -342,7 +362,7 @@ def _check(cfg, root, actor, op, path, content, dest):
     if op not in OPS:
         _deny("R00", "unknown op %r (create|write|edit|move|delete)" % (op,))
     parts = _rel_parts(root, path)
-    if any(p in cfg.ignore for p in parts):
+    if is_ignored(cfg, parts):
         return _allow("ignored path")
     ap = os.path.join(root, *parts)
     isdir = _is_dir(root, parts, path)
@@ -353,7 +373,7 @@ def _check(cfg, root, actor, op, path, content, dest):
         if not dest:
             _deny("R00", "move needs dest")
         dparts = _rel_parts(root, dest)
-        if any(p in cfg.ignore for p in dparts):
+        if is_ignored(cfg, dparts):
             return _allow("ignored path")
         _check_move(cfg, root, actor, parts, dparts, path, dest)
         return _allow("move ok")
@@ -388,3 +408,25 @@ def _check(cfg, root, actor, op, path, content, dest):
         return _allow("edit ok")
     _validate_create(cfg, root, parts, isdir, content)
     return _allow("create ok")
+
+
+def validate_existing(cfg, root, parts, isdir):
+    """Judge a path that already exists on disk (watcher/scan use): same rules as create, minus the
+    'already exists' and 'next version' checks. Returns a Verdict."""
+    cfg = cfg or DEFAULT
+    parts = tuple(parts)
+    if is_ignored(cfg, parts):
+        return _allow("ignored path")
+    content = None
+    ap = os.path.join(root, *parts)
+    if not isdir and (parts[-1].endswith(".md")):
+        try:
+            with open(ap, "r", errors="replace") as f:
+                content = f.read(1 << 20)
+        except OSError:
+            content = None
+    try:
+        _validate_create(cfg, root, parts, isdir, content, existing=True)
+    except _Stop as s:
+        return s.verdict
+    return _allow("valid")

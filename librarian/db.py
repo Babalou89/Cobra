@@ -75,6 +75,9 @@ class DB:
                       (time.time(), actor, op, path, rule, detail, quarantined_to))
         return cur.lastrowid
 
+    def set_quarantine(self, iid, qpath):
+        self._x("UPDATE incidents SET quarantined_to=? WHERE id=?", (qpath, iid))
+
     def incidents(self, state=None):
         if state:
             return self._q("SELECT * FROM incidents WHERE state=? ORDER BY id", (state,))

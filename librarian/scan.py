@@ -35,7 +35,7 @@ def sha256_file(p, max_bytes=MAX_HASH_BYTES):
         return ""
 
 
-def _entries(p, cfg):
+def _entries(p, cfg, root=None):
     try:
         names = sorted(os.listdir(p))
     except OSError:
@@ -45,6 +45,10 @@ def _entries(p, cfg):
         if n in cfg.ignore:
             continue
         full = os.path.join(p, n)
+        if root is not None and cfg.ignore_rel:
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
+            if any(rel == r or rel.startswith(r + "/") for r in cfg.ignore_rel):
+                continue
         if os.path.isdir(full) and not os.path.islink(full):
             dirs.append(n)
         else:
@@ -82,7 +86,7 @@ class _Scanner:
         return "/".join(parts)
 
     def add(self, path, rule, detail, kind="file", suggested=None, beneath=0):
-        if path in self.exceptions and kind != "tamper":
+        if kind != "tamper" and any(path == e or (self.exceptions[e] == "" and path.startswith(e + "/")) for e in self.exceptions):
             return
         self.v.append(Violation(path, rule, detail, kind, suggested, beneath))
 
@@ -105,7 +109,7 @@ class _Scanner:
     # -------- walk
     def run(self):
         cfg = self.cfg
-        files, dirs = _entries(self.root, cfg)
+        files, dirs = _entries(self.root, cfg, self.root)
         for n in files:
             if n not in cfg.root_files and n not in cfg.allowlist:
                 self.add(n, "R05", "file not allowed at tree root (allowed: %s)" % ", ".join(cfg.root_files + cfg.allowlist))
@@ -127,7 +131,7 @@ class _Scanner:
     def group(self, g):
         cfg = self.cfg
         gp = os.path.join(self.root, g)
-        files, dirs = _entries(gp, cfg)
+        files, dirs = _entries(gp, cfg, self.root)
         for n in files:
             ok = n in cfg.group_files or n in cfg.allowlist
             if not ok:
@@ -144,7 +148,7 @@ class _Scanner:
         cfg = self.cfg
         up = os.path.join(self.root, g, u)
         unit = self.rel(g, u)
-        files, dirs = _entries(up, cfg)
+        files, dirs = _entries(up, cfg, self.root)
         for need in ("SPEC.md", "MEMORY.md"):
             if need not in files:
                 self.add(unit, "R05", "unit root is missing %s" % need, kind="dir")
@@ -185,7 +189,7 @@ class _Scanner:
             self.add(reld, "R08", "depth %d exceeds max %d below the unit root" % (len(dirs), cfg.max_depth),
                      kind="dir", beneath=_count_files(d, cfg))
             return
-        files, subdirs = _entries(d, cfg)
+        files, subdirs = _entries(d, cfg, self.root)
         if files and subdirs:
             self.add(reld, "R04", "mixes %d file(s) and %d subdir(s); branch dirs hold only dirs, leaf dirs only chain files" % (len(files), len(subdirs)), kind="dir")
         leaf = "/".join(dirs)
@@ -262,3 +266,39 @@ def reconcile(root, db, config=None, open_incidents=False, actor="librarian-scan
         new.append(db.open_incident(actor, "scan", v.path, v.rule, v.detail))
     db.replace_files(recs)
     return vs, new
+
+
+def file_record(root, relpath, cfg=None, prev=None):
+    """Image record for one existing file (used by the watcher). Mirrors what scan() records."""
+    cfg = cfg or R.DEFAULT
+    parts = relpath.split("/")
+    absp = os.path.join(root, *parts)
+    st = os.stat(absp, follow_symlinks=False)
+    name = parts[-1]
+    unit = "/".join(parts[:2]) if len(parts) >= 3 else ""
+    leaf, version, slug, status, hs = "", None, None, "violation", "n/a"
+    ext = os.path.splitext(name)[1].lstrip(".")
+    if len(parts) >= 4 and parts[2] == "raw":
+        status, leaf = "raw", "raw"
+    elif len(parts) >= 4:
+        dirs = parts[2:-1]
+        leaf, slug = "/".join(dirs), dirs[-1]
+        pc = R.parse_chain(name, slug)
+        if name in cfg.allowlist:
+            status = "special"
+        elif pc:
+            version, ext = pc
+            status = "numbered"
+            if ext == "md":
+                hs = "ok" if R.header_problem(_read(absp), slug, version) is None else "bad"
+        elif R.NUMBERED_RE.match(name):
+            status = "numbered"
+    elif name in cfg.allowlist or (len(parts) == 1 and name in cfg.root_files) or \
+            (len(parts) == 2 and name in cfg.group_files) or (len(parts) == 3 and name in cfg.unit_files):
+        status = "special"
+    if prev and prev.get("size") == st.st_size and prev.get("mtime") == st.st_mtime and prev.get("sha256"):
+        sha = prev["sha256"]
+    else:
+        sha = sha256_file(absp)
+    return dict(path=relpath, unit=unit, leaf=leaf, version=version, slug=slug, ext=ext, sha256=sha,
+                size=st.st_size, mtime=st.st_mtime, status=status, header_status=hs)

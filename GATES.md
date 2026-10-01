@@ -19,3 +19,8 @@ RESULT L3: PASS (79 tests OK, first run).
 CHECK: python3 -m unittest tests.test_mapgen tests.test_server tests.test_client 2>&1 | tail -3 ; full suite
 EXPECT: OK. POST /check returns {allow, rule_id, reason, suggested_name} (LOCK honoured); GET /map?unit= returns the generated block (leaf | highest version | status | summary first line); GET /health ok; POST /resolve is NOT served over HTTP (404, CLI only); server refuses hosts other than 127.0.0.1/10.0.0.1; client shim exit 0 allow, 2 deny, 2 unreachable (fail closed), 0 with LIBRARIAN_BYPASS=1 (logged to a spool and posted to /bypass when reachable).
 RESULT L4: PASS (100 tests OK; fix: test path typo in mapgen test).
+
+## L5 Watcher, quarantine, notifier
+CHECK: python3 -m unittest tests.test_notify tests.test_watcher 2>&1 | tail -3 ; full suite
+EXPECT: OK. Out-of-band bad file (both inotify-if-available and forced 1s poll modes) -> moved to quarantine/<incident-id>/<relpath>, incident opened, LogNotifier alarm recorded, global LOCK active, all within 3s of creation. Valid out-of-band files are indexed, not quarantined; half-written files are not judged until settled; modified/deleted immutable files open incidents (evidence copy, no data destroyed); approve restores a quarantined file and the watcher does not re-quarantine it; quarantine inside the tree (infra/librarian/quarantine) is ignored. NtfyNotifier is only constructed in tests, never sent.
+RESULT L5: PASS (123 tests OK; watcher suite run 3x, stable; inotify mode available and used in AutoMode tests).
