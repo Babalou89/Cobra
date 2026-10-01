@@ -1,0 +1,14 @@
+# REPORT: decision log (one line each, with why)
+
+- Orphan worktree via `git worktree add --orphan` (git 2.43 supports it): keeps history separate from the Go code as asked.
+- Sandbox root is itself the unit root with SPEC.md/MEMORY.md/RULES.md: the brief asked for a unit-root SPEC.md; code dirs are intentionally outside the contract (not a managed tree).
+- Unit = <group>/<name> (depth 2), group list in Config: 0029v lists groups + projects/fyt-7862 as unit, so position is the only classifier that works before content exists.
+- Numbered = ^\d{4}[vV_]: 0029v says legacy uppercase-V/underscore files are grandfathered and only relocated, so they must be immutable too.
+- Summary is one line: header is fixed at 5 lines, so "<=3 lines" cannot hold; 300 char cap instead.
+- Depth 3 = directory levels below unit root (a/b/c ok): 0029v example access/adb is depth 2 and cap is 3.
+- Last two non-blank lines for SPEC.md Current:/Next: and R10 only applies to unit SPEC.md: group/root SPEC.md have no stated tail format.
+- move takes an explicit dest kwarg: brief signature has no destination but R03 depends on it.
+- Create of an existing numbered path = R03 (not R02): it is an overwrite attempt, and the suggestion points at the next version.
+- Empty dirs are legal placeholders (rooting/success/ in 0029v is empty until a recipe exists).
+- Allowlist names (.gitignore, config.yaml) allowed at root/group/unit and leaf/empty dirs but not branch dirs: branch dirs are "ONLY subdirectories".
+- LOCK check happens first and is injected via a lock() callable so rules.py stays DB-free.

@@ -1,0 +1,358 @@
+illy@babalou2:~$ tree
+.
+├── 0024vrecon-babalou2-storage.sh
+├── agent-pool
+│   └── hooks
+├── architeture
+│   ├── CONVENTIONS.md
+│   ├── git-hooks
+│   │   ├── 0001vblock-overwrite-versioned.md
+│   │   ├── 0001vblock-underscore-version-names.md
+│   │   ├── 0001vgit-hooks-overview.md
+│   │   └── SPEC.md
+│   ├── git-hooks-in-use
+│   │   ├── 0001vhooks-in-use.md
+│   │   ├── 0001vhooks-that-fire-for-fixes.md
+│   │   ├── 0002vhooks-in-use.md
+│   │   ├── 0002vhooks-that-fire-for-fixes.md
+│   │   ├── hooks
+│   │   │   └── pre-commit
+│   │   ├── SPEC.md
+│   │   └── verify
+│   │       ├── job-0001
+│   │       │   ├── 0000_bad.py
+│   │       │   ├── 0000vok.txt
+│   │       │   └── readme.txt
+│   │       ├── job-0002
+│   │       │   ├── 0000vok.txt
+│   │       │   └── readme.txt
+│   │       └── job-0003
+│   │           ├── 0000vok.txt
+│   │           └── readme.txt
+│   └── SPEC.md
+├── fyt.prop
+├── headunit_screen2.jpg
+├── headunit_screen3.jpg
+├── headunit_screen.jpg
+├── operator-core
+│   ├── 0001VOPERATOR.md
+│   ├── 0002VSTACK.md
+│   ├── db
+│   │   ├── 0001Vschema.sql
+│   │   └── operator.sqlite
+│   ├── hooks
+│   ├── inbox
+│   │   ├── ai_infra
+│   │   │   └── README.md
+│   │   ├── network
+│   │   │   └── README.md
+│   │   ├── operator
+│   │   │   └── README.md
+│   │   ├── projects
+│   │   │   └── README.md
+│   │   └── vehicle
+│   ├── mcp
+│   │   └── 0001VMCP-PLAN.md
+│   ├── media
+│   │   ├── ai_infra
+│   │   ├── network
+│   │   ├── operator
+│   │   ├── projects
+│   │   └── vehicle
+│   │       └── kia_forte_2018
+│   ├── mem9
+│   │   └── 0001VMEM9-PLAN.md
+│   ├── salvage
+│   ├── scripts
+│   │   ├── kb_query.ps1
+│   │   └── kb_query.sh
+│   └── skills
+│       └── knowledge-base
+│           └── SKILL.md
+├── projects
+│   ├── 0000vGATES.md
+│   ├── 0001Vagent-pool-build
+│   ├── 0001vGATES.md
+│   ├── AGENTS.md
+│   ├── c
+│   │   ├── hello-world
+│   │   │   ├── 0000vmain.c
+│   │   │   └── SPEC.md
+│   │   └── RULES.md
+│   ├── CLAUDE.md
+│   ├── docs
+│   │   ├── CONVENTIONS.md
+│   │   ├── DECISIONS.md
+│   │   └── MEMORY.md
+│   ├── fyt-7862-diagnostic
+│   │   ├── 0000Vblocker_status.md
+│   │   ├── 0000Vconfig.txt
+│   │   ├── 0000Vdiagnostic.py
+│   │   ├── 0000Vlog-latest.txt
+│   │   ├── 0000VSettingsConfig.txt
+│   │   ├── 0000Vsha1.txt
+│   │   ├── 0000Vtroubleshooting.md
+│   │   ├── 0001Vanalysis.txt
+│   │   ├── 0001Vconfig.txt
+│   │   ├── 0001Vcrash_listing.txt
+│   │   ├── 0001Vdiagnostic.py
+│   │   ├── 0001Veminfo_listing.txt
+│   │   ├── 0001Venable_adb.md
+│   │   ├── 0001Vlog-2026-09-05.txt
+│   │   ├── 0001VSettingsConfig.txt
+│   │   ├── 0001Vsha1.txt
+│   │   ├── 0001Vtroubleshooting.md
+│   │   ├── 0002VAppCfg_config.txt
+│   │   ├── 0002Vftp_explorer.py
+│   │   ├── 0002Vmodem_assert_info.xml
+│   │   ├── 0002Vserial_port_choice.md
+│   │   ├── 0002Vsystem_map.json
+│   │   ├── 0003Vadb_connector.py
+│   │   ├── 0003Vdeep_diagnostic.py
+│   │   ├── 0003Vdiagnostic_report.json
+│   │   ├── 0004Vbypass_config.txt
+│   │   ├── 0004Vfindings_report.json
+│   │   ├── 0004Vmybtinfo.bin
+│   │   ├── 0004Vpermission_blocker.md
+│   │   ├── 0004Vrepair_engine.py
+│   │   ├── 0004Vroot_adb_fix.sh
+│   │   ├── 0005Vfinal_repair.py
+│   │   ├── 0005Vfinal_status.json
+│   │   ├── 0005VREPAIR_GUIDE.md
+│   │   ├── 0005Vserial_port_confirmed.md
+│   │   ├── 0006Vhandoff.md
+│   │   ├── 0007Vusb_analysis.txt
+│   │   ├── 0008Vfull_diagnostic.sh
+│   │   ├── 0009Vauto_connect.sh
+│   │   ├── 0010Vroot_attempts.md
+│   │   ├── 0013Vsurfer63_root_links.md
+│   │   ├── AGENTS.md
+│   │   ├── CLAUDE.md
+│   │   ├── diagnostic_20260923_020426
+│   │   │   ├── adb_devices.txt
+│   │   │   ├── all_properties.txt
+│   │   │   ├── android_version.txt
+│   │   │   ├── audio_settings.txt
+│   │   │   ├── build_fingerprint.txt
+│   │   │   ├── build_id.txt
+│   │   │   ├── current_errors.txt
+│   │   │   ├── display_info.txt
+│   │   │   ├── encryption_ic.txt
+│   │   │   ├── fyt_packages.txt
+│   │   │   ├── fyt_properties.txt
+│   │   │   ├── gps_locale.txt
+│   │   │   ├── hardware_info.txt
+│   │   │   ├── kernel_version.txt
+│   │   │   ├── manufacturer_id.txt
+│   │   │   ├── mcu_version.txt
+│   │   │   ├── mic_settings.txt
+│   │   │   ├── panel_type.txt
+│   │   │   ├── rotation_settings.txt
+│   │   │   ├── screen_density.txt
+│   │   │   ├── screen_size.txt
+│   │   │   ├── serial_devices.txt
+│   │   │   └── SUMMARY_REPORT.txt
+│   │   ├── diagnostic_20260923_035007
+│   │   │   ├── adb_devices.txt
+│   │   │   ├── all_properties.txt
+│   │   │   ├── android_version.txt
+│   │   │   ├── audio_settings.txt
+│   │   │   ├── build_fingerprint.txt
+│   │   │   ├── build_id.txt
+│   │   │   ├── current_errors.txt
+│   │   │   ├── display_info.txt
+│   │   │   ├── encryption_ic.txt
+│   │   │   ├── fyt_packages.txt
+│   │   │   ├── fyt.prop
+│   │   │   ├── fyt_properties.txt
+│   │   │   ├── gps_locale.txt
+│   │   │   ├── hardware_info.txt
+│   │   │   ├── kernel_version.txt
+│   │   │   ├── manufacturer_id.txt
+│   │   │   ├── mcu_version.txt
+│   │   │   ├── mic_settings.txt
+│   │   │   ├── panel_type.txt
+│   │   │   ├── rotation_settings.txt
+│   │   │   ├── screen_density.txt
+│   │   │   ├── screen_size.txt
+│   │   │   ├── serial_devices.txt
+│   │   │   └── SUMMARY_REPORT.txt
+│   │   ├── docs
+│   │   │   └── MEMORY.md
+│   │   ├── FINAL_REPORT_20260923.txt
+│   │   ├── firmware
+│   │   │   ├── 0000VADB_DEBUG_RESULTS.txt
+│   │   │   ├── 0000Vfyt.prop_MALFORMED
+│   │   │   ├── 0001Vconfig_WIFI_ADB.txt
+│   │   │   ├── 0001Vfyt.prop_FROM_ALLAPP
+│   │   │   ├── 0002Vfyt.prop_FIXED
+│   │   │   ├── 0002Vnew-boot_magisk.img
+│   │   │   ├── 0002Vstock_boot_backup.img
+│   │   │   ├── 0003V6315_1_MAGISK.zip
+│   │   │   ├── 0010Vfix_fyt_prop_7862lsec.sh
+│   │   │   ├── 0011Vusb_fix_fyt_prop.zip
+│   │   │   ├── 0012Vusb_root_magisk.zip
+│   │   │   ├── config_LANDSCAPE_FIXED.txt
+│   │   │   ├── extracted
+│   │   │   │   ├── 6315_1.zip
+│   │   │   │   ├── AllApp
+│   │   │   │   │   └── app
+│   │   │   │   │       └── 190000000_com.syu.carlink
+│   │   │   │   │           └── 190000000_com.syu.carlink.apk
+│   │   │   │   ├── AllAppUpdate.bin
+│   │   │   │   ├── config.txt
+│   │   │   │   ├── lsec6315update
+│   │   │   │   ├── lsec_updatesh
+│   │   │   │   │   ├── 7862lsec.sh
+│   │   │   │   │   ├── 8581lsec.sh
+│   │   │   │   │   └── lsec.sh
+│   │   │   │   ├── oem
+│   │   │   │   │   ├── 3Ddongtai_V1.8.apk
+│   │   │   │   │   ├── EasyConnected.apk
+│   │   │   │   │   ├── Torque_pro v1.8.54.apk
+│   │   │   │   │   └── TPMS_USB_U06_M.apk
+│   │   │   │   └── updatecfg.txt
+│   │   │   ├── firmware_list.html
+│   │   │   ├── FYTuis7862BinRepo
+│   │   │   │   ├── additional_stuff
+│   │   │   │   │   └── btring.zip
+│   │   │   │   ├── APK
+│   │   │   │   │   └── DocumentsUI-10.apk
+│   │   │   │   ├── com.syu.ms
+│   │   │   │   │   └── 20211111
+│   │   │   │   │       ├── 20211111_MED_ext_com_syu_ms.zip
+│   │   │   │   │       ├── 20211111_MED_nokill_com_syu_ms.zip
+│   │   │   │   │       ├── 20211111_MED_org_com_syu_ms.zip
+│   │   │   │   │       ├── navi_app.txt
+│   │   │   │   │       ├── navi_audio_from_playstatus.txt
+│   │   │   │   │       ├── player_app.txt
+│   │   │   │   │       ├── search_nokill.txt
+│   │   │   │   │       └── unkill_app.txt
+│   │   │   │   ├── lsec_scripts
+│   │   │   │   │   ├── appBackup-V1.1.zip
+│   │   │   │   │   ├── appBackup-v1.2.zip
+│   │   │   │   │   ├── appBackup.zip
+│   │   │   │   │   ├── ChangeFytmanufacturer.zip
+│   │   │   │   │   ├── disable_aircolayout.zip
+│   │   │   │   │   ├── disableplayeronstartup.zip
+│   │   │   │   │   ├── enableplayeronstartup.zip
+│   │   │   │   │   ├── flash_any_AllAppUpdate.zip
+│   │   │   │   │   ├── getinfo.zip
+│   │   │   │   │   ├── hosts_add_blocker.zip
+│   │   │   │   │   ├── Joying_music_darkmod.zip
+│   │   │   │   │   ├── Joying_music_defmod.zip
+│   │   │   │   │   ├── Replace_configtxt.zip
+│   │   │   │   │   └── ro.sf.swrotation.zip
+│   │   │   │   ├── README.md
+│   │   │   │   └── useful_info
+│   │   │   │       └── mod_your_music_apk.zip
+│   │   │   ├── joying_firmware.zip
+│   │   │   ├── manufacturer_script
+│   │   │   │   ├── lsec6315update
+│   │   │   │   ├── lsec6316update
+│   │   │   │   ├── lsec6521update
+│   │   │   │   ├── lsec6523update
+│   │   │   │   ├── lsec_updatesh
+│   │   │   │   │   ├── 7862lsec.sh
+│   │   │   │   │   ├── 8581lsec.sh
+│   │   │   │   │   └── lsec.sh
+│   │   │   │   └── README.txt
+│   │   │   ├── README.md
+│   │   │   ├── README_ROOT_MISSION.md
+│   │   │   ├── usb_fix_fyt_prop
+│   │   │   │   ├── fyt.prop
+│   │   │   │   ├── lsec6315update
+│   │   │   │   ├── lsec6316update
+│   │   │   │   └── lsec_updatesh
+│   │   │   │       ├── 7862lsec.sh
+│   │   │   │       └── 8581lsec.sh
+│   │   │   ├── usb_joying_full_magisk
+│   │   │   │   ├── 6315_1.zip
+│   │   │   │   ├── AllAppUpdate.bin
+│   │   │   │   ├── config.txt
+│   │   │   │   ├── lsec6315update
+│   │   │   │   ├── oem
+│   │   │   │   │   ├── 3Ddongtai_V1.8.apk
+│   │   │   │   │   ├── EasyConnected.apk
+│   │   │   │   │   ├── Magisk-v30.7.apk
+│   │   │   │   │   ├── Torque_pro v1.8.54.apk
+│   │   │   │   │   └── TPMS_USB_U06_M.apk
+│   │   │   │   └── updatecfg.txt
+│   │   │   ├── usb_kernel_magisk
+│   │   │   │   ├── 6315_1.zip
+│   │   │   │   ├── config.txt
+│   │   │   │   ├── fyt.prop
+│   │   │   │   ├── lsec6315update
+│   │   │   │   ├── lsec_updatesh
+│   │   │   │   └── oem
+│   │   │   ├── usb_root_magisk
+│   │   │   │   ├── boot.img
+│   │   │   │   ├── fyt.prop
+│   │   │   │   ├── lsec6315update
+│   │   │   │   └── lsec_updatesh
+│   │   │   │       ├── 7862lsec.sh
+│   │   │   │       ├── 8581lsec.sh
+│   │   │   │       └── lsec.sh
+│   │   │   └── usb_signed_plus_magisk
+│   │   │       ├── 6315_1.zip
+│   │   │       ├── AllAppUpdate.bin
+│   │   │       ├── boot_magisk.img
+│   │   │       ├── config.txt
+│   │   │       ├── fyt.prop
+│   │   │       ├── lsec6315update
+│   │   │       ├── lsec_updatesh
+│   │   │       │   ├── 7862lsec.sh
+│   │   │       │   ├── 8581lsec.sh
+│   │   │       │   └── lsec.sh
+│   │   │       └── oem
+│   │   │           ├── 3Ddongtai_V1.8.apk
+│   │   │           ├── EasyConnected.apk
+│   │   │           ├── Magisk-v30.7.apk
+│   │   │           ├── Torque_pro v1.8.54.apk
+│   │   │           └── TPMS_USB_U06_M.apk
+│   │   ├── GATES.md
+│   │   ├── STATUS_CURRENT_20260923.md
+│   │   ├── STATUS_REPORT_20260923.txt
+│   │   ├── STATUS_REPORT_20260923_UPDATE.txt
+│   │   ├── STATUS_REPORT_FINAL.txt
+│   │   └── WORKSPACE.md
+│   ├── go
+│   │   ├── hello-world
+│   │   │   ├── 0000vmain.go
+│   │   │   └── SPEC.md
+│   │   └── RULES.md
+│   ├── java
+│   │   ├── hello-world
+│   │   │   ├── 0000vMain.java
+│   │   │   └── SPEC.md
+│   │   └── RULES.md
+│   ├── python
+│   │   ├── hello-world
+│   │   │   ├── 0000vmain.py
+│   │   │   └── SPEC.md
+│   │   ├── llm-inference-s1max
+│   │   │   ├── 0000vresearch-findings.md
+│   │   │   ├── 0001vinstall-guide.md
+│   │   │   ├── 0002vbios-settings-template.md
+│   │   │   ├── 0003vhardware-correction.md
+│   │   │   ├── 0004vspec-corrected.md
+│   │   │   ├── 0005vbest-models-24gb.md
+│   │   │   ├── 0006vquick-start.md
+│   │   │   └── SPEC.md
+│   │   └── RULES.md
+│   ├── rust
+│   │   ├── hello-world
+│   │   │   ├── 0000vmain.rs
+│   │   │   └── SPEC.md
+│   │   └── RULES.md
+│   └── WORKSPACE.md
+├── pull_test.sh
+├── recon
+│   └── recon-babalou2-20260926-072345.txt
+├── test_reverse.sh
+└── watch
+    └── ledgers
+        └── 0001vgit-hooks-fire.log
+
+82 directories, 272 files
+billy@babalou2:~$
