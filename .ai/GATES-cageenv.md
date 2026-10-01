@@ -29,3 +29,8 @@ RESULT S3a: PASS (failed first, passes after composeTask)
 CHECK: go test ./internal/worker -run 'TestRalph(PromptMatchesRegistry|NoteTool)' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: ralph registry has note (writes only NOTES.md); every registry tool listed in prompt; prompt mentions note only when registered; {"note":"x"} is a successful note call, not unknown tool
 RESULT S3b: PASS
+
+## S3c Deterministic decodeAction
+CHECK: go test ./internal/worker -run 'TestDecodeAction(Deterministic|Precedence)' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: precedence "tool"+"args" > "done" > tool-name-keyed (sorted keys); 2-key reply decoded 100x gives identical tool
+RESULT S3c: PASS

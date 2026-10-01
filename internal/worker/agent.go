@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -458,9 +459,17 @@ func decodeAction(raw []byte) (*action, error) {
 		// of {"tool": "...", "args": {...}}. Detect both patterns.
 		var flat map[string]any
 		if json.Unmarshal(raw, &flat) == nil {
-			for k, v := range flat {
+			// Sorted keys: Go map order is random, and a reply with two
+			// candidate keys must decode the same way every time.
+			keys := make([]string, 0, len(flat))
+			for k := range flat {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				v := flat[k]
 				switch k {
-				case "done", "summary":
+				case "done", "summary", "tool", "args":
 					continue
 				}
 				switch val := v.(type) {
@@ -480,6 +489,11 @@ func decodeAction(raw []byte) (*action, error) {
 		return nil, fmt.Errorf(`action must set "tool" or "done"`)
 	}
 	// Local models often flatten args to the top level — accept both shapes.
+	// Precedence: "tool"+"args" > "done" > tool-name-keyed.
+	if len(act.Args) > 0 && act.Tool != "" {
+		act.Done = false
+		return &act, nil
+	}
 	if len(act.Args) == 0 {
 		var flat map[string]any
 		if json.Unmarshal(raw, &flat) == nil {
