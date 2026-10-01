@@ -30,3 +30,8 @@
 - Config.ignore_rel defaults to infra/librarian/quarantine and infra/librarian/state: 0029v puts quarantine inside the tree, so the watcher/scan/rules must ignore it or they would loop.
 - Approve exceptions cover a quarantined dir's whole subtree (sha '' = path prefix): otherwise the restored children would be re-quarantined one by one.
 - Alarm failure never raises (NtfyNotifier swallows errors): enforcement must not depend on the notifier; LogNotifier is the backstop.
+- LB3 replica = empty files parsed from the pasted `tree`; childless entries are file vs dir by extension/known extensionless names, verified against the tree's own summary (272 files exact, 81 dirs + root = 82).
+- Unknown top-level dirs scanned provisionally inflate A04 (24 of 37); the report says so in a Caveats section rather than hiding it.
+- Content rules (R09/R10) are under-reported on an empty-file replica; stated in the report, true numbers need a scan of the real tree.
+- Migration actions are classified by rule + path pattern (A01-A15), proposals only: the brief says no auto-fix.
+- CLI `--db` is hoisted from anywhere on the command line (argparse subparsers reject it after the subcommand): friendlier for ssh one-liners.

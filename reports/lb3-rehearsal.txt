@@ -1,0 +1,309 @@
+LB3 rehearsal: reconciliation scan of a REPLICA of the babalou2 home tree (empty files; no changes made, no auto-fix)
+Source: fixtures/babalou2-home-tree.txt (tree listing from babalou2). Rules: RULES.md / docs 0029v.
+Replica: 81 dirs + 272 files (tree summary: 82 dirs incl. root, 272 files)
+Total violations: 199   (+125 files inside directories reported once and not examined individually)
+
+== Counts by rule ==
+R01    56
+R04     2
+R05   119
+R07    15
+R10     2
+R11     5
+
+== Detail grouped by rule ==
+
+[R01] 56 violation(s)
+  architeture/git-hooks-in-use/hooks/pre-commit | must be named NNNNvhooks.<ext> in hooks/ -> suggest 0001vhooks.md
+  architeture/git-hooks-in-use/verify/job-0001/0000_bad.py | must be named NNNNvjob-0001.<ext> in job-0001/ -> suggest 0001vjob-0001.py
+  architeture/git-hooks-in-use/verify/job-0001/0000vok.txt | must be named NNNNvjob-0001.<ext> in job-0001/ -> suggest 0001vjob-0001.txt
+  architeture/git-hooks-in-use/verify/job-0001/readme.txt | must be named NNNNvjob-0001.<ext> in job-0001/ -> suggest 0001vjob-0001.txt
+  architeture/git-hooks-in-use/verify/job-0002/0000vok.txt | must be named NNNNvjob-0002.<ext> in job-0002/ -> suggest 0001vjob-0002.txt
+  architeture/git-hooks-in-use/verify/job-0002/readme.txt | must be named NNNNvjob-0002.<ext> in job-0002/ -> suggest 0001vjob-0002.txt
+  architeture/git-hooks-in-use/verify/job-0003/0000vok.txt | must be named NNNNvjob-0003.<ext> in job-0003/ -> suggest 0001vjob-0003.txt
+  architeture/git-hooks-in-use/verify/job-0003/readme.txt | must be named NNNNvjob-0003.<ext> in job-0003/ -> suggest 0001vjob-0003.txt
+  operator-core/inbox/network/README.md | must be named NNNNvnetwork.<ext> in network/ -> suggest 0001vnetwork.md
+  operator-core/inbox/operator/README.md | must be named NNNNvoperator.<ext> in operator/ -> suggest 0001voperator.md
+  operator-core/inbox/projects/README.md | must be named NNNNvprojects.<ext> in projects/ -> suggest 0001vprojects.md
+  operator-core/skills/knowledge-base/SKILL.md | must be named NNNNvknowledge-base.<ext> in knowledge-base/ -> suggest 0001vknowledge-base.md
+  projects/c/hello-world/0000vmain.c | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.c
+  projects/c/hello-world/SPEC.md | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.md
+  projects/fyt-7862-diagnostic/docs/MEMORY.md | must be named NNNNvdocs.<ext> in docs/ -> suggest 0001vdocs.md
+  projects/fyt-7862-diagnostic/firmware/0000VADB_DEBUG_RESULTS.txt | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0000Vfyt.prop_MALFORMED | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0001Vconfig_WIFI_ADB.txt | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0001Vfyt.prop_FROM_ALLAPP | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0002Vfyt.prop_FIXED | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0002Vnew-boot_magisk.img | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0002Vstock_boot_backup.img | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0003V6315_1_MAGISK.zip | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0010Vfix_fyt_prop_7862lsec.sh | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0011Vusb_fix_fyt_prop.zip | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/0012Vusb_root_magisk.zip | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/README.md | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/README_ROOT_MISSION.md | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/config_LANDSCAPE_FIXED.txt | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/extracted/6315_1.zip | must be named NNNNvextracted.<ext> in extracted/
+  projects/fyt-7862-diagnostic/firmware/extracted/AllAppUpdate.bin | must be named NNNNvextracted.<ext> in extracted/
+  projects/fyt-7862-diagnostic/firmware/extracted/config.txt | must be named NNNNvextracted.<ext> in extracted/
+  projects/fyt-7862-diagnostic/firmware/extracted/lsec6315update | must be named NNNNvextracted.<ext> in extracted/
+  projects/fyt-7862-diagnostic/firmware/extracted/oem/3Ddongtai_V1.8.apk | must be named NNNNvoem.<ext> in oem/ -> suggest 0001voem.apk
+  projects/fyt-7862-diagnostic/firmware/extracted/oem/EasyConnected.apk | must be named NNNNvoem.<ext> in oem/ -> suggest 0001voem.apk
+  projects/fyt-7862-diagnostic/firmware/extracted/oem/TPMS_USB_U06_M.apk | must be named NNNNvoem.<ext> in oem/ -> suggest 0001voem.apk
+  projects/fyt-7862-diagnostic/firmware/extracted/oem/Torque_pro v1.8.54.apk | must be named NNNNvoem.<ext> in oem/ -> suggest 0001voem.apk
+  projects/fyt-7862-diagnostic/firmware/extracted/updatecfg.txt | must be named NNNNvextracted.<ext> in extracted/
+  projects/fyt-7862-diagnostic/firmware/firmware_list.html | must be named NNNNvfirmware.<ext> in firmware/
+  projects/fyt-7862-diagnostic/firmware/joying_firmware.zip | must be named NNNNvfirmware.<ext> in firmware/
+  projects/go/hello-world/0000vmain.go | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.go
+  projects/go/hello-world/SPEC.md | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.md
+  projects/java/hello-world/0000vMain.java | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.java
+  projects/java/hello-world/SPEC.md | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.md
+  projects/python/hello-world/0000vmain.py | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.py
+  projects/python/hello-world/SPEC.md | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.md
+  projects/python/llm-inference-s1max/0000vresearch-findings.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/0001vinstall-guide.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/0002vbios-settings-template.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/0003vhardware-correction.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/0004vspec-corrected.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/0005vbest-models-24gb.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/0006vquick-start.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/python/llm-inference-s1max/SPEC.md | must be named NNNNvllm-inference-s1max.<ext> in llm-inference-s1max/ -> suggest 0001vllm-inference-s1max.md
+  projects/rust/hello-world/0000vmain.rs | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.rs
+  projects/rust/hello-world/SPEC.md | must be named NNNNvhello-world.<ext> in hello-world/ -> suggest 0001vhello-world.md
+
+[R04] 2 violation(s)
+  projects/fyt-7862-diagnostic/firmware | mixes 16 file(s) and 8 subdir(s); branch dirs hold only dirs, leaf dirs only chain files
+  projects/fyt-7862-diagnostic/firmware/extracted | mixes 5 file(s) and 3 subdir(s); branch dirs hold only dirs, leaf dirs only chain files
+
+[R05] 119 violation(s)
+  0024vrecon-babalou2-storage.sh | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  agent-pool/hooks | unit root is missing SPEC.md
+  agent-pool/hooks | unit root is missing MEMORY.md
+  architeture/CONVENTIONS.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks | unit root is missing MEMORY.md
+  architeture/git-hooks-in-use | unit root is missing MEMORY.md
+  architeture/git-hooks-in-use/0001vhooks-in-use.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks-in-use/0001vhooks-that-fire-for-fixes.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks-in-use/0002vhooks-in-use.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks-in-use/0002vhooks-that-fire-for-fixes.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks/0001vblock-overwrite-versioned.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks/0001vblock-underscore-version-names.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  architeture/git-hooks/0001vgit-hooks-overview.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  fyt.prop | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  headunit_screen.jpg | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  headunit_screen2.jpg | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  headunit_screen3.jpg | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  operator-core/0001VOPERATOR.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  operator-core/0002VSTACK.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  operator-core/db | unit root is missing SPEC.md
+  operator-core/db | unit root is missing MEMORY.md
+  operator-core/db/0001Vschema.sql | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  operator-core/db/operator.sqlite | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  operator-core/hooks | unit root is missing SPEC.md
+  operator-core/hooks | unit root is missing MEMORY.md
+  operator-core/inbox | unit root is missing SPEC.md
+  operator-core/inbox | unit root is missing MEMORY.md
+  operator-core/mcp | unit root is missing SPEC.md
+  operator-core/mcp | unit root is missing MEMORY.md
+  operator-core/mcp/0001VMCP-PLAN.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  operator-core/media | unit root is missing SPEC.md
+  operator-core/media | unit root is missing MEMORY.md
+  operator-core/mem9 | unit root is missing SPEC.md
+  operator-core/mem9 | unit root is missing MEMORY.md
+  operator-core/mem9/0001VMEM9-PLAN.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  operator-core/salvage | unit root is missing SPEC.md
+  operator-core/salvage | unit root is missing MEMORY.md
+  operator-core/scripts | unit root is missing SPEC.md
+  operator-core/scripts | unit root is missing MEMORY.md
+  operator-core/scripts/kb_query.ps1 | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  operator-core/scripts/kb_query.sh | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  operator-core/skills | unit root is missing SPEC.md
+  operator-core/skills | unit root is missing MEMORY.md
+  projects/0000vGATES.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  projects/0001vGATES.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  projects/AGENTS.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  projects/CLAUDE.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  projects/WORKSPACE.md | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  projects/c | unit root is missing SPEC.md
+  projects/c | unit root is missing MEMORY.md
+  projects/docs | unit root is missing SPEC.md
+  projects/docs/CONVENTIONS.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/docs/DECISIONS.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic | unit root is missing SPEC.md
+  projects/fyt-7862-diagnostic | unit root is missing MEMORY.md
+  projects/fyt-7862-diagnostic/0000VSettingsConfig.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0000Vblocker_status.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0000Vconfig.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0000Vdiagnostic.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0000Vlog-latest.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0000Vsha1.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0000Vtroubleshooting.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001VSettingsConfig.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vanalysis.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vconfig.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vcrash_listing.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vdiagnostic.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Veminfo_listing.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Venable_adb.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vlog-2026-09-05.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vsha1.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0001Vtroubleshooting.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0002VAppCfg_config.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0002Vftp_explorer.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0002Vmodem_assert_info.xml | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0002Vserial_port_choice.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0002Vsystem_map.json | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0003Vadb_connector.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0003Vdeep_diagnostic.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0003Vdiagnostic_report.json | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0004Vbypass_config.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0004Vfindings_report.json | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0004Vmybtinfo.bin | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0004Vpermission_blocker.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0004Vrepair_engine.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0004Vroot_adb_fix.sh | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0005VREPAIR_GUIDE.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0005Vfinal_repair.py | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0005Vfinal_status.json | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0005Vserial_port_confirmed.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0006Vhandoff.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0007Vusb_analysis.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0008Vfull_diagnostic.sh | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0009Vauto_connect.sh | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0010Vroot_attempts.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/0013Vsurfer63_root_links.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/AGENTS.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/CLAUDE.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/FINAL_REPORT_20260923.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/GATES.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/STATUS_CURRENT_20260923.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/STATUS_REPORT_20260923.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/STATUS_REPORT_20260923_UPDATE.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/STATUS_REPORT_FINAL.txt | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/fyt-7862-diagnostic/WORKSPACE.md | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+  projects/go | unit root is missing SPEC.md
+  projects/go | unit root is missing MEMORY.md
+  projects/java | unit root is missing SPEC.md
+  projects/java | unit root is missing MEMORY.md
+  projects/python | unit root is missing SPEC.md
+  projects/python | unit root is missing MEMORY.md
+  projects/rust | unit root is missing SPEC.md
+  projects/rust | unit root is missing MEMORY.md
+  pull_test.sh | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  recon/recon-babalou2-20260926-072345.txt | file not allowed at group root (allowed: SPEC.md, RULES.md, .gitignore, config.yaml)
+  test_reverse.sh | file not allowed at tree root (allowed: CLAUDE.md, SPEC.md, RULES.md, MEMORY.md, .gitignore, config.yaml)
+  watch/ledgers | unit root is missing SPEC.md
+  watch/ledgers | unit root is missing MEMORY.md
+  watch/ledgers/0001vgit-hooks-fire.log | file not allowed at unit root (allowed: SPEC.md, MEMORY.md, RULES.md, .gitignore, config.yaml)
+
+[R07] 15 violation(s)
+  operator-core/inbox/ai_infra | directory 'ai_infra' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+1 files beneath]
+  operator-core/media/ai_infra | directory 'ai_infra' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space)
+  operator-core/media/vehicle/kia_forte_2018 | directory 'kia_forte_2018' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space)
+  projects/0001Vagent-pool-build | directory '0001Vagent-pool-build' is numbered; directories are never numbered
+  projects/fyt-7862-diagnostic/diagnostic_20260923_020426 | directory 'diagnostic_20260923_020426' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+23 files beneath]
+  projects/fyt-7862-diagnostic/diagnostic_20260923_035007 | directory 'diagnostic_20260923_035007' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+24 files beneath]
+  projects/fyt-7862-diagnostic/firmware/FYTuis7862BinRepo | directory 'FYTuis7862BinRepo' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+26 files beneath]
+  projects/fyt-7862-diagnostic/firmware/extracted/AllApp | directory 'AllApp' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+1 files beneath]
+  projects/fyt-7862-diagnostic/firmware/extracted/lsec_updatesh | directory 'lsec_updatesh' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+3 files beneath]
+  projects/fyt-7862-diagnostic/firmware/manufacturer_script | directory 'manufacturer_script' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+8 files beneath]
+  projects/fyt-7862-diagnostic/firmware/usb_fix_fyt_prop | directory 'usb_fix_fyt_prop' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+5 files beneath]
+  projects/fyt-7862-diagnostic/firmware/usb_joying_full_magisk | directory 'usb_joying_full_magisk' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+10 files beneath]
+  projects/fyt-7862-diagnostic/firmware/usb_kernel_magisk | directory 'usb_kernel_magisk' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+4 files beneath]
+  projects/fyt-7862-diagnostic/firmware/usb_root_magisk | directory 'usb_root_magisk' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+6 files beneath]
+  projects/fyt-7862-diagnostic/firmware/usb_signed_plus_magisk | directory 'usb_signed_plus_magisk' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphen, no underscore/space) [+14 files beneath]
+
+[R10] 2 violation(s)
+  architeture/git-hooks-in-use/SPEC.md | SPEC.md must end with 'Current: <path>' then 'Next: <line|none>' (last two non-blank lines)
+  architeture/git-hooks/SPEC.md | SPEC.md must end with 'Current: <path>' then 'Next: <line|none>' (last two non-blank lines)
+
+[R11] 5 violation(s)
+  agent-pool | top-level dir 'agent-pool' is not a group root (infra, models, services, agents, projects, archive); scanned provisionally as a group
+  architeture | top-level dir 'architeture' is not a group root (infra, models, services, agents, projects, archive); scanned provisionally as a group
+  operator-core | top-level dir 'operator-core' is not a group root (infra, models, services, agents, projects, archive); scanned provisionally as a group
+  recon | top-level dir 'recon' is not a group root (infra, models, services, agents, projects, archive); scanned provisionally as a group
+  watch | top-level dir 'watch' is not a group root (infra, models, services, agents, projects, archive); scanned provisionally as a group
+
+== Proposed migration actions by class (proposals only; nothing executed) ==
+
+A01 (72) legacy numbered file (uppercase V / underscore / 0000 / wrong slug)
+  action: librarian moves it UNCHANGED into <unit>/raw/legacy-2026-09-30/; one agent reads the legacy and writes the consolidated 0001v snapshot of the proper leaf
+  rules: R01 x16, R05 x56
+  e.g. architeture/git-hooks-in-use/0001vhooks-in-use.md
+  e.g. architeture/git-hooks-in-use/0001vhooks-that-fire-for-fixes.md
+  e.g. architeture/git-hooks-in-use/0002vhooks-in-use.md
+
+A02 (7) loose file in the home root
+  action: classify per 0029v section 3: fyt.prop -> projects/fyt-7862/raw/ (original name) or config chain; headunit_screen*.jpg -> projects/fyt-7862/raw/dumps/; 0024v... recon script -> infra/<unit>/<leaf>/ as 0001v chain (old name to raw/legacy); pull_test.sh and test_reverse.sh -> TBD (Billy decides)
+  rules: R05 x7
+  e.g. 0024vrecon-babalou2-storage.sh
+  e.g. fyt.prop
+  e.g. headunit_screen.jpg
+
+A03 (5) top-level dir that is not a group root
+  action: architeture/ -> rename to infra/ (misspelling) and fold hooks/librarian into units; agent-pool/ -> agents/agent-pool; operator-core/, recon/, watch/ -> TBD (Billy decides: infra/ units or archive/)
+  rules: R11 x5
+  e.g. agent-pool
+  e.g. architeture
+  e.g. operator-core
+
+A04 (37) unit root without SPEC.md/MEMORY.md
+  action: migration step 1: create SPEC.md (goal, key facts, ## Map, Current:/Next:) and MEMORY.md before anything else is moved into the unit
+  rules: R05 x37
+  e.g. agent-pool/hooks
+  e.g. agent-pool/hooks
+  e.g. architeture/git-hooks
+
+A05 (26) stray doc/file at group or unit root (AGENTS/CLAUDE/WORKSPACE/GATES/STATUS/DECISIONS/CONVENTIONS...)
+  action: fold the useful content into the unit SPEC.md / RULES.md / MEMORY.md; move the original UNCHANGED to <unit>/raw/legacy-2026-09-30/
+  rules: R01 x7, R05 x19
+  e.g. architeture/CONVENTIONS.md
+  e.g. architeture/git-hooks-in-use/verify/job-0001/readme.txt
+  e.g. architeture/git-hooks-in-use/verify/job-0002/readme.txt
+
+A06 (2) dump directory with tool-generated names (diagnostic_YYYYMMDD_*)
+  action: move the whole dir unchanged to <unit>/raw/dumps/ (hash-tracked); summarise in the relevant 0001v leaf
+  rules: R07 x2
+  e.g. projects/fyt-7862-diagnostic/diagnostic_20260923_020426
+  e.g. projects/fyt-7862-diagnostic/diagnostic_20260923_035007
+
+A07 (36) vendor firmware / extracted payload tree
+  action: move the whole tree unchanged to <unit>/raw/firmware/ (original names, hash-tracked); reference it from the references/ or config/ leaf
+  rules: R01 x25, R04 x2, R07 x9
+  e.g. projects/fyt-7862-diagnostic/firmware
+  e.g. projects/fyt-7862-diagnostic/firmware/0000VADB_DEBUG_RESULTS.txt
+  e.g. projects/fyt-7862-diagnostic/firmware/0000Vfyt.prop_MALFORMED
+
+A08 (4) directory name not lowercase-hyphen or numbered
+  action: rename to the suggested slug (empty/placeholder dirs) or fold into a proper leaf; numbered dirs (0001Vname) become leaf chains, original to raw/legacy
+  rules: R07 x4
+  e.g. operator-core/inbox/ai_infra
+  e.g. operator-core/media/ai_infra
+  e.g. operator-core/media/vehicle/kia_forte_2018
+
+A11 (8) file in a leaf with a non-chain name
+  action: write its content as the next NNNNv<leaf> version (full snapshot, valid header); move the original UNCHANGED to <unit>/raw/legacy-2026-09-30/
+  rules: R01 x8
+  e.g. architeture/git-hooks-in-use/hooks/pre-commit
+  e.g. operator-core/skills/knowledge-base/SKILL.md
+  e.g. projects/c/hello-world/SPEC.md
+
+A14 (2) unit SPEC.md without Current:/Next: tail
+  action: agent appends Current:/Next: lines, then `librarian map --write` regenerates the ## Map
+  rules: R10 x2
+  e.g. architeture/git-hooks-in-use/SPEC.md
+  e.g. architeture/git-hooks/SPEC.md
+
+== Top 5 migration actions (by violation count) ==
+1. A01 x72  legacy numbered file (uppercase V / underscore / 0000 / wrong slug) => librarian moves it UNCHANGED into <unit>/raw/legacy-2026-09-30/; one agent reads the legacy and writes the consolidated 0001v snapshot of the proper leaf
+2. A04 x37  unit root without SPEC.md/MEMORY.md => migration step 1: create SPEC.md (goal, key facts, ## Map, Current:/Next:) and MEMORY.md before anything else is moved into the unit
+3. A07 x36  vendor firmware / extracted payload tree => move the whole tree unchanged to <unit>/raw/firmware/ (original names, hash-tracked); reference it from the references/ or config/ leaf
+4. A05 x26  stray doc/file at group or unit root (AGENTS/CLAUDE/WORKSPACE/GATES/STATUS/DECISIONS/CONVENTIONS...) => fold the useful content into the unit SPEC.md / RULES.md / MEMORY.md; move the original UNCHANGED to <unit>/raw/legacy-2026-09-30/
+5. A11 x8  file in a leaf with a non-chain name => write its content as the next NNNNv<leaf> version (full snapshot, valid header); move the original UNCHANGED to <unit>/raw/legacy-2026-09-30/
+
+== Caveats ==
+- A04 is inflated: 24 of 37 come from dirs under UNKNOWN top-level dirs (R11), scanned provisionally as groups, so their children count as units.
+- The replica has EMPTY files: content rules (R09 chain header, R10 SPEC tail on real content) are under-reported here; run `librarian scan` on the real tree for the true count.
+- Empty childless entries are classified file/dir by name (extension or known extensionless names); the tree summary (272 files) matches exactly.
+
+No auto-fix: the librarian only reports. LB4 migrates one unit (fyt-7862) first; LB7 enables the lock after all legacy is classified.

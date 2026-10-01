@@ -24,3 +24,8 @@ RESULT L4: PASS (100 tests OK; fix: test path typo in mapgen test).
 CHECK: python3 -m unittest tests.test_notify tests.test_watcher 2>&1 | tail -3 ; full suite
 EXPECT: OK. Out-of-band bad file (both inotify-if-available and forced 1s poll modes) -> moved to quarantine/<incident-id>/<relpath>, incident opened, LogNotifier alarm recorded, global LOCK active, all within 3s of creation. Valid out-of-band files are indexed, not quarantined; half-written files are not judged until settled; modified/deleted immutable files open incidents (evidence copy, no data destroyed); approve restores a quarantined file and the watcher does not re-quarantine it; quarantine inside the tree (infra/librarian/quarantine) is ignored. NtfyNotifier is only constructed in tests, never sent.
 RESULT L5: PASS (123 tests OK; watcher suite run 3x, stable; inotify mode available and used in AutoMode tests).
+
+## L6 LB3 rehearsal on a replica of the babalou2 ~ tree
+CHECK: python3 tools/lb3_rehearsal.py && python3 -m unittest tests.test_lb3 2>&1 | tail -3 ; full suite
+EXPECT: OK. fixtures/babalou2-home-tree.txt parses to 272 files + 81 dirs (+ root = 82 per tree's own summary); replica of empty files is scanned (no changes, no auto-fix); reports/lb3-rehearsal.txt exists, is grouped by rule with counts that sum to the total, and gives one proposed migration action per violation class; every violation maps to a class.
+RESULT L6: PASS (129 tests OK; report: 199 violations on replica).

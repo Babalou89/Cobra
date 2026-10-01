@@ -226,9 +226,14 @@ class _Scanner:
             if dup:
                 self.add(reld, "R02", "duplicate version number(s) %s" % ", ".join("%04d" % v for v in dup), kind="dir")
             expect = list(range(1, vs[-1] + 1))
-            if vs != expect:
-                miss = [v for v in expect if v not in versions]
-                self.add(reld, "R02", "versions not consecutive from 0001 (missing %s)" % ", ".join("%04d" % v for v in miss), kind="dir")
+            miss = [v for v in expect if v not in versions]
+            if miss or 0 in versions:
+                msg = []
+                if miss:
+                    msg.append("missing %s" % ", ".join("%04d" % v for v in miss))
+                if 0 in versions:
+                    msg.append("version 0000 is never valid")
+                self.add(reld, "R02", "versions not consecutive from 0001 (%s)" % "; ".join(msg), kind="dir")
         for n in subdirs:
             if n == "raw":
                 self.add(self.rel(reld, n), "R06", "raw/ is only allowed at the unit root", kind="dir", beneath=_count_files(os.path.join(d, n), cfg))
