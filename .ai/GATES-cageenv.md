@@ -9,3 +9,8 @@ RESULT S0: PASS — build/vet clean, 8 pkgs ok (cmd added), RUN count 99 -> 101 
 CHECK: ls internal/worker/testdata/fixture-*.jsonl | wc -l && go test ./internal/worker -run TestFixturesLoad -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: 5 files; TestFixturesLoad PASS (5 subtests), ok
 RESULT S1: PASS
+
+## S2 Fake backend
+CHECK: go test ./internal/backend/fake ./internal/worker -run 'TestFake|TestReplay' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: fake scripted backend + integration test driving the real Agent loop with fixture replies; PASS, current behavior asserted
+RESULT S2: PASS — 107 -> 116 RUN lines
