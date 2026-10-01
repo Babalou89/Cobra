@@ -12,3 +12,9 @@
 - Empty dirs are legal placeholders (rooting/success/ in 0029v is empty until a recipe exists).
 - Allowlist names (.gitignore, config.yaml) allowed at root/group/unit and leaf/empty dirs but not branch dirs: branch dirs are "ONLY subdirectories".
 - LOCK check happens first and is injected via a lock() callable so rules.py stays DB-free.
+- Scan skips descent into dirs that violate R07/R08/R06-raw-nesting and reports them once with a file count: examining a bad dir's children only produces noise.
+- Unknown top-level dirs (R11) are scanned provisionally as groups: makes the LB3 inventory useful instead of one line per dir.
+- reconcile opens incidents only for tamper (immutable file changed/gone since last image) by default; other violations only with open_incidents=True: legacy trees must be inventoried without freezing everyone before LB7.
+- Librarian keeps hashes not content, so `revert` of a modified/deleted numbered file means "reject + restore from git/backup"; revert of a quarantined file leaves it in quarantine: avoids a blob store (scope) and never deletes data.
+- approve = restore quarantined file + add path/sha exception: scan never re-reports an approved state.
+- The librarian actor is frozen by LOCK too: a global freeze means global.
