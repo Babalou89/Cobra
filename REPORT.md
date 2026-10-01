@@ -18,3 +18,8 @@
 - Librarian keeps hashes not content, so `revert` of a modified/deleted numbered file means "reject + restore from git/backup"; revert of a quarantined file leaves it in quarantine: avoids a blob store (scope) and never deletes data.
 - approve = restore quarantined file + add path/sha exception: scan never re-reports an approved state.
 - The librarian actor is frozen by LOCK too: a global freeze means global.
+- Map format fixed as marker-delimited list lines `- leaf/ | vNNNN | status | summary`: 0029v left it TBD; markers make regeneration idempotent and keep Current:/Next: as the last two lines.
+- Resolve has no HTTP route (404): 0029v says CLI-only in v1; a "local socket" is replaced by direct DB access from the CLI (same trust boundary: whoever can ssh in).
+- Server accepts only 127.0.0.1/10.0.0.1 as bind hosts (ValueError otherwise): enforces the 0029v bind policy in code, not just UFW.
+- Client bypass overrides even a reachable deny and is logged to the server (/bypass) or a local spool flushed on next contact: "every bypass logged and alarmed on reconnect".
+- Client shim reads intended content via --content-file so header rules (R09/R10) can be enforced at hook time.
