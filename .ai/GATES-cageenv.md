@@ -24,3 +24,8 @@ RESULT S3-pre: PASS
 CHECK: go test ./cmd -run TestTaskWiring -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: first user message to model contains "TASK: <cli string>" and the DOD task as context; test fails before fix
 RESULT S3a: PASS (failed first, passes after composeTask)
+
+## S3b note tool in ralph registry; prompt tool list generated from registry
+CHECK: go test ./internal/worker -run 'TestRalph(PromptMatchesRegistry|NoteTool)' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: ralph registry has note (writes only NOTES.md); every registry tool listed in prompt; prompt mentions note only when registered; {"note":"x"} is a successful note call, not unknown tool
+RESULT S3b: PASS

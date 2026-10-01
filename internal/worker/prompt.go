@@ -1,5 +1,7 @@
 package worker
 
+import "strings"
+
 // SystemPrompt defines the action protocol and, in ralph mode, the memory
 // mechanics. Restored from v1.2.0 — the permissive prompt that let Qwen
 // read files and explore. The aggressive v1.8.0 prompt ("don't read, write
@@ -19,9 +21,15 @@ Rules:
 - Large files: write them in chunks — first file_write normally, then file_write with "append": true for each further chunk.
 `
 	if ralph {
+		// The memory protocol is only described when the registry actually
+		// offers the note tool, so the prompt never names a tool that
+		// would answer "unknown tool".
 		prompt += `
-Memory protocol: your conversation resets every turn. The ONLY things you see each turn are the task, the definition of done, the last verify report, your NOTES.md, and your most recent action. Record every durable finding and every completed step with the note tool immediately — anything not in NOTES.md is forgotten.
-`
+Memory protocol: your conversation resets every turn. The ONLY things you see each turn are the task, the DOD criteria and last verify report, your NOTES.md, and your most recent actions.`
+		if strings.Contains(toolList, "\n- note ") || strings.HasPrefix(toolList, "- note ") {
+			prompt += ` Record every durable finding and every completed step with the note tool immediately — anything not in NOTES.md is forgotten.`
+		}
+		prompt += "\n"
 	}
 	return prompt + "\nAvailable tools:\n" + toolList
 }

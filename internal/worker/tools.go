@@ -96,15 +96,18 @@ func DefaultRegistry(w *jail.Workspace, skillsRoot string) *Registry {
 
 // RalphRegistry returns the minimal toolset for ralph mode: file_read,
 // file_write, code_execute. No exploratory tools (list_dir, web_*,
-// system_info, skill_run, file_edit, note). The cage injects file
+// system_info, skill_run, file_edit). The cage injects file
 // contents into FixTarget so the model doesn't need to explore.
 // file_read stays because the model may need files the cage didn't inject.
 // code_execute covers both shell and inline code execution.
-// Note tool removed — instruct models waste turns on notes instead of code.
+// note is registered: in ralph mode NOTES.md is the model's only memory
+// across turns, the prompt tells it to use note, and models emit {"note":…}
+// regardless. It writes only NOTES.md inside the jail.
 func RalphRegistry(w *jail.Workspace) *Registry {
 	r := NewRegistry()
 	registerFSReadWrite(r, w)
 	registerShellExecute(r, w)
+	registerNote(r, w)
 	return r
 }
 
