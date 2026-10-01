@@ -49,3 +49,19 @@ RESULT S3e: PASS (verify-after-attempt already existed; added ErrTurnsExhausted 
 CHECK: go test ./cmd ./internal/cage ./internal/config -run 'AutoVersionBump' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: config key accepted, default true; core check does not fail missing bump when enabled (still fails when false); run that never touches VERSION passes and commit contains bumped .ai/VERSION; model-made bump not doubled
 RESULT S3f: PASS
+
+## S4 Replay fixtures before/after
+CHECK: go test ./internal/worker -run TestReplayTable -v 2>&1 | grep -E '^(\s+replay_table|--- |ok|FAIL)'
+EXPECT: table of fixture | outcome | turns | protocol errors | note-tool results for all 5 fixtures, on S2 commit (before) vs HEAD (after); no panics, all terminate
+RESULT S4: PASS. Replay of the 5 fixtures through the real Agent loop (fake backend, 24-turn cap), before = commit 76981c0 (S2), after = HEAD.
+Columns: fixture | outcome before -> after | turns before -> after | protocol errors before -> after | "unknown tool" results before -> after | note tool OK after
+
+| fixture | outcome (before -> after) | turns | protocol errors | unknown-tool results (before -> after) | note OK (after) |
+|---|---|---|---|---|---|
+| parse-toolname | script exhausted -> script exhausted | 4 -> 4 | 0 -> 0 | 3 -> 0 | 3 |
+| loop-read | loop abort (4 reads/6) -> same | 4 -> 4 | 0 -> 0 | 0 -> 0 | 0 |
+| loop-version | all 24 turns, no done -> same (now ErrTurnsExhausted, run verifies once) | 24 -> 24 | 0 -> 0 | 10 -> 0 | 10 |
+| loop-edit | all 24 turns, no done -> same | 24 -> 24 | 0 -> 0 | 1 -> 0 | 1 |
+| dedup | 3 consecutive protocol errors abort -> same | 7 -> 7 | 5 -> 5 | 1 -> 0 | 1 |
+
+Reading: fixtures hold only the model's replies, so worker-level turns/outcomes cannot change; the measurable win is 15 wasted "unknown tool" turns -> 0 (note now works). Protocol errors in dedup are genuinely invalid replies and remain. Run-level (attempt loop) gains are covered by unit tests: max_attempts handoff, turn-out verify, auto version bump.

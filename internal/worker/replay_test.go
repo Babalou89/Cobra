@@ -3,6 +3,7 @@ package worker
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,8 @@ type replayOutcome struct {
 	Err            error
 	Turns          int // model calls made
 	ProtocolErrors int
+	UnknownTools   int // tool results that said "unknown tool"
+	NoteOK         int // successful note tool results
 	Root           string
 }
 
@@ -41,6 +44,14 @@ func replayFixture(t testing.TB, name string, maxTurns int) replayOutcome {
 		Observe: func(kind string, f map[string]any) {
 			if kind == "result" && f["tool"] == "protocol" {
 				out.ProtocolErrors++
+			}
+			if kind == "result" {
+				if txt, _ := f["text"].(string); strings.HasPrefix(txt, "unknown tool") {
+					out.UnknownTools++
+				}
+				if ok, _ := f["ok"].(bool); ok && f["tool"] == "note" {
+					out.NoteOK++
+				}
 			}
 		},
 	}
