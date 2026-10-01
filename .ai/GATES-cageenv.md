@@ -14,3 +14,8 @@ RESULT S1: PASS
 CHECK: go test ./internal/backend/fake ./internal/worker -run 'TestFake|TestReplay' -v 2>&1 | grep -E '^(--- |ok|FAIL)'
 EXPECT: fake scripted backend + integration test driving the real Agent loop with fixture replies; PASS, current behavior asserted
 RESULT S2: PASS — 107 -> 116 RUN lines
+
+## S3-pre Extract attempt loop (cmd/loop.go runAttempts) — enables S3a/d/e/f tests
+CHECK: go build ./... && go vet ./... && go test ./cmd -run TestRunAttemptsPassCommits -v 2>&1 | grep -E '^(--- |ok|FAIL)'
+EXPECT: behavior-preserving extraction; characterization test: fake backend writes correct file, verify passes, run commits
+RESULT S3-pre: PASS

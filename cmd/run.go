@@ -14,12 +14,9 @@ import (
 	"cobra/internal/backend"
 	"cobra/internal/cage"
 	"cobra/internal/config"
-	"cobra/internal/critic"
 	"cobra/internal/ctxdiet"
-	"cobra/internal/gitx"
 	"cobra/internal/jail"
 	"cobra/internal/plan"
-	"cobra/internal/planner"
 	"cobra/internal/skills"
 	"cobra/internal/state"
 	"cobra/internal/worker"
@@ -237,100 +234,11 @@ var runCmd = &cobra.Command{
 			fmt.Printf("dashboard: %s\n", dashURL)
 		}
 
-		report := ""
-		for attempt := 1; ; attempt++ {
-			currentAttempt = attempt
-			fmt.Printf("attempt %d\n", attempt)
-			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "attempt started: " + firstLineOf(task)})
-			_ = state.TouchCooldown(state.CooldownPath(dir))
-			directive := dod.Direct(attempt, report)
-
-			// Inject planner summary from PLAN.md if it exists.
-			if planSummary := cage.InjectPlanner(jl.Root); planSummary != "" {
-				directive.FixTarget += planSummary
-			}
-
-			if err := agent.Run(directive.Task, directive.FixTarget, report); err != nil {
-				fmt.Fprintf(os.Stderr, "worker error: %v\n", err)
-				_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "status", Text: "worker error: " + err.Error()})
-			}
-
-			res, err := cage.Verify(cage.Options{Dir: dir, DODPath: dodPath, DODOnly: false})
-			if err != nil {
-				return err
-			}
-			fmt.Print(res.Report())
-			passed := res.Passed
-			_ = state.AppendEvent(state.EventsPath(dir), state.Event{Attempt: attempt, Kind: "verify", OK: &passed, Text: firstLineOf(res.Report()) + fmt.Sprintf(" (%d failures)", len(res.Failures))})
-			_ = state.WriteReport(dir, state.QualityReport{Time: time.Now(), Passed: res.Passed, Failures: res.Failures})
-
-			if res.Passed {
-				// Post-pass critic: run mypy on touched .py files when enabled.
-				if cfg.Critic.Enabled {
-					changed, err := gitx.ChangedFiles(dir)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "critic: could not list changed files: %v\n", err)
-					} else {
-						var pyFiles []string
-						for _, f := range changed {
-							if strings.HasSuffix(f, ".py") {
-								pyFiles = append(pyFiles, f)
-							}
-						}
-						if len(pyFiles) > 0 {
-							fmt.Printf("critic: running mypy on %d touched .py file(s)\n", len(pyFiles))
-							for round := 1; round <= critic.MaxRounds; round++ {
-								r, allowlist, err := critic.BoundedRemediate(pyFiles, round)
-								if err != nil {
-									fmt.Fprintf(os.Stderr, "critic: bounded remediate failed: %v\n", err)
-									break
-								}
-								if len(r.Errors) == 0 {
-									fmt.Println("critic: mypy clean")
-									break
-								}
-								fmt.Printf("critic: round %d — %d error(s)\n", r.Number, len(r.Errors))
-								_ = allowlist
-								if round == critic.MaxRounds {
-									fmt.Fprintf(os.Stderr, "critic: max rounds reached, %d residual error(s)\n", len(r.Errors))
-								}
-							}
-						}
-					}
-				}
-
-				msg := "cage: " + firstLineOf(task)
-				if err := gitx.CommitAll(dir, msg); err != nil {
-					return fmt.Errorf("verify passed but commit failed: %w", err)
-				}
-				st.RecordRun(nil)
-				_ = st.Save()
-				_ = state.Audit(state.AuditPath(dir), "run.pass", map[string]any{"attempts": attempt})
-				fmt.Println("PASS — committed")
-				return nil
-			}
-
-			// Planner step — diagnose failures for the next attempt.
-			if cfg.Planner.Enabled && cfg.Planner.APIKey != "" {
-				planResult := planner.Diagnose(cfg, res.Failures, dir)
-				if planResult != "" {
-					planPath := filepath.Join(jl.Root, "PLAN.md")
-					_ = os.WriteFile(planPath, []byte(planResult), 0o644)
-					agent.PlanPath = planPath
-					fmt.Printf("planner: wrote PLAN.md (%d bytes)\n", len(planResult))
-				}
-			}
-			struck := st.RecordRun(res.Failures)
-			_ = st.Save()
-			if struck {
-				fmt.Printf("STRIKE %d/%d — no progress since last attempt\n", st.Strikes, state.MaxStrikes)
-			}
-			_ = state.Audit(state.AuditPath(dir), "run.fail", map[string]any{"attempt": attempt, "failures": len(res.Failures), "struck": struck})
-			if st.Locked {
-				return fmt.Errorf("LOCKED after %d no-progress attempts — human reset required", state.MaxStrikes)
-			}
-			report = res.Report()
-		}
+		return runAttempts(loopParams{
+			Dir: dir, DODPath: dodPath, DOD: dod, Agent: agent, Task: task,
+			Cfg: cfg, State: st, JailRoot: jl.Root,
+			OnAttempt: func(n int) { currentAttempt = n },
+		})
 	},
 }
 
